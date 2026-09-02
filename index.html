@@ -1793,11 +1793,19 @@ async function exportPng(){
   document.body.appendChild(holder);
 
   try{
-    /* the clone starts unscrolled — fold the live scroll position into a shift */
+    /* WebKit's capture leaves the inside of a scrollable box blank, and the blank
+       region in the saved PNG matched this element exactly. So the copy gets a plain
+       fixed box with the scroll baked in as a shift — same picture, nothing to scroll. */
     const liveSc = live.querySelector(".content");
     const sc = node.querySelector(".content");
-    const st = liveSc ? liveSc.scrollTop : 0;
-    if(st && sc) Array.from(sc.children).forEach(k=>{ k.style.transform = `translateY(${-st}px)`; });
+    if(liveSc && sc){
+      const st = liveSc.scrollTop;
+      sc.style.flex = "none";
+      sc.style.height = liveSc.clientHeight + "px";
+      sc.style.overflow = "hidden";
+      sc.style.overscrollBehavior = "auto";
+      if(st) Array.from(sc.children).forEach(k=>{ k.style.transform = `translateY(${-st}px)`; });
+    }
 
     const flat = state.exportFlat === "on" ? true
                : state.exportFlat === "off" ? false
