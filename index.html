@@ -1,1237 +1,1893 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>유튜브 댓글창 메이커</title>
+<title>애플뮤직 메이커</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Noto+Sans+KR:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ============ 앱 셸 토큰 ============ */
+/* ============================================================
+   TOKENS — studio chrome
+   ground: graphite with a faint magenta bias (Apple Music ink)
+   accent: #FA243C, Apple Music red
+   ============================================================ */
 :root{
-  --app-bg:#efece8; --stage:#e5e1dc; --panel:#fbfaf9; --panel-2:#f2efec;
-  --line:#ddd7d1; --line-soft:#e8e3de;
-  --ink:#1b1917; --ink-2:#6d655e; --ink-3:#9a938b;
-  --accent:#c8322f; --accent-ink:#ffffff; --accent-soft:#f7e4e3; --focus:#c8322f;
-  --shadow:0 1px 2px rgba(40,30,25,.08), 0 8px 24px rgba(40,30,25,.06);
+  --ground:#f6f4f7;
+  --stage:#ebe7ee;
+  --panel:#ffffff;
+  --panel-2:#f4f1f6;
+  --line:#e0dae6;
+  --line-strong:#cdc4d4;
+  --ink:#1b171f;
+  --ink-2:#4a4353;
+  --muted:#7d7488;
+  --accent:#FA243C;
+  --accent-soft:rgba(250,36,60,.10);
+  --focus:#3b6cf6;
+  --radius:12px;
+  --dot:rgba(27,23,31,.09);
+  color-scheme:light dark;
 }
-@media (prefers-color-scheme: dark){
+@media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --app-bg:#141312; --stage:#0e0d0d; --panel:#1d1b1a; --panel-2:#232120;
-    --line:#332f2d; --line-soft:#282524;
-    --ink:#f2eeea; --ink-2:#a49b93; --ink-3:#7b736c;
-    --accent:#f0605c; --accent-ink:#241110; --accent-soft:#33201f; --focus:#f0605c;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --ground:#141118;
+    --stage:#0e0c12;
+    --panel:#1d1922;
+    --panel-2:#26212d;
+    --line:#332c3c;
+    --line-strong:#463c52;
+    --ink:#f2edf6;
+    --ink-2:#c3bacd;
+    --muted:#8d8399;
+    --accent:#FF3A55;
+    --accent-soft:rgba(255,58,85,.14);
+    --focus:#6f92ff;
+    --dot:rgba(255,255,255,.07);
   }
 }
 :root[data-theme="dark"]{
-  --app-bg:#141312; --stage:#0e0d0d; --panel:#1d1b1a; --panel-2:#232120;
-  --line:#332f2d; --line-soft:#282524;
-  --ink:#f2eeea; --ink-2:#a49b93; --ink-3:#7b736c;
-  --accent:#f0605c; --accent-ink:#241110; --accent-soft:#33201f; --focus:#f0605c;
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --ground:#141118;
+  --stage:#0e0c12;
+  --panel:#1d1922;
+  --panel-2:#26212d;
+  --line:#332c3c;
+  --line-strong:#463c52;
+  --ink:#f2edf6;
+  --ink-2:#c3bacd;
+  --muted:#8d8399;
+  --accent:#FF3A55;
+  --accent-soft:rgba(255,58,85,.14);
+  --focus:#6f92ff;
+  --dot:rgba(255,255,255,.07);
 }
 
 *{box-sizing:border-box}
+html,body{margin:0;padding:0}
 body{
-  margin:0; background:var(--app-bg); color:var(--ink);
-  font-family:"Noto Sans KR","Roboto",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
-  font-size:13px; -webkit-font-smoothing:antialiased;
+  background:var(--ground);
+  -webkit-text-size-adjust:100%;
+  color:var(--ink);
+  font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
 }
-button{font-family:inherit}
-:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:4px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
 
-.app{display:grid; grid-template-columns:352px 1fr; height:100vh; min-height:600px}
-.rail{background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0}
-.rail-head{padding:16px 18px 14px; border-bottom:1px solid var(--line-soft); display:flex; align-items:baseline; gap:9px; flex-wrap:wrap}
-.brand{font-family:"Archivo","Noto Sans KR",sans-serif; font-weight:700; font-size:19px; letter-spacing:-.02em; margin:0}
-.brand em{font-style:normal; color:var(--accent)}
-.brand-sub{font-size:11px; color:var(--ink-3)}
-.rail-body{overflow-y:auto; flex:1; padding-bottom:70px}
-.rail-foot{border-top:1px solid var(--line); padding:12px 14px; display:flex; gap:8px; background:var(--panel)}
+/* ---------- shell ---------- */
+.app{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 400px;
+  height:100vh;
+  overflow:hidden;
+}
+@media (max-width:1080px){
+  .app{grid-template-columns:1fr;height:auto;overflow:visible}
+  /* on a phone nothing may force the page wider than the screen — a single
+     over-wide control makes the browser widen the whole layout and everything
+     opens looking zoomed in */
+  .segmented{flex-wrap:wrap}
+  .segmented button{flex:1 1 28%;font-size:11.5px;padding:7px 3px}
+  .row{flex-wrap:wrap}
+  .sec-body{padding-left:14px;padding-right:14px}
+  details.sec > summary{padding-left:14px;padding-right:14px}
+  .panel-head{padding-left:14px;padding-right:14px}
+}
+body.fullview .app{grid-template-columns:1fr}
+body.fullview .panel{display:none}
+body.fullview .brand{opacity:0}
+body.fullview .stage{padding:36px 36px 92px}
 
+/* ---------- stage ---------- */
 .stage{
-  background:var(--stage); position:relative; overflow:auto;
-  background-image:radial-gradient(rgba(128,120,112,.28) 1px, transparent 1px);
+  position:relative;
+  background:var(--stage);
+  background-image:radial-gradient(var(--dot) 1px, transparent 1px);
   background-size:22px 22px;
-  display:flex; align-items:flex-start; justify-content:center; padding:44px 32px 96px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:56px 32px 104px;
+  height:100vh;
+  overflow:hidden;
 }
-/* 축소한 만큼만 자리를 차지하도록 실제 크기 박스를 따로 둔다 */
-.stage-box{position:relative; flex:none}
-.stage-inner{transform-origin:top left; position:absolute; left:0; top:0; color:var(--ink)}
-.zoombar{
-  position:fixed; right:22px; bottom:20px; z-index:20; display:flex; align-items:center; gap:10px;
-  background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:7px 14px;
-  box-shadow:var(--shadow); font-size:12px;
+@media (max-width:1080px){
+  .stage{height:auto;min-height:70vh;padding:32px 16px 84px;overflow:visible}
 }
-.zoombar input[type=range]{width:100px; accent-color:var(--accent)}
-.zoomval{font-variant-numeric:tabular-nums; color:var(--ink-2); min-width:38px; text-align:right}
 
-details.sec{border-bottom:1px solid var(--line-soft)}
-details.sec > summary{list-style:none; cursor:pointer; padding:13px 18px; display:flex; align-items:center; gap:9px; font-weight:700; font-size:12.5px; user-select:none}
+.brand{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;align-items:center;gap:12px;
+  padding:18px 24px;
+  pointer-events:none;
+}
+.brand .mark{
+  width:26px;height:26px;border-radius:7px;
+  background:var(--accent);
+  display:grid;place-items:center;
+  box-shadow:0 2px 10px rgba(250,36,60,.35);
+}
+.brand .mark svg{width:15px;height:15px;fill:#fff}
+.brand h1{
+  font-family:"Archivo",sans-serif;
+  font-weight:800;font-size:14px;letter-spacing:-.02em;
+  margin:0;color:var(--ink);
+}
+.brand .sub{
+  font-size:11.5px;color:var(--muted);margin-left:2px;
+  letter-spacing:.01em;
+}
+
+.stage-tools{
+  position:absolute;bottom:0;left:0;right:0;z-index:5;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:16px;
+}
+.stage-tools > *{pointer-events:auto}
+#fullBtn{background:var(--panel);box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.zoom{
+  display:flex;align-items:center;gap:2px;
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:999px;padding:3px;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.zoom button{
+  border:0;background:transparent;cursor:pointer;
+  width:28px;height:28px;border-radius:999px;
+  display:grid;place-items:center;color:var(--ink-2);
+}
+.zoom button:hover{background:var(--panel-2)}
+.zoom .val{
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  min-width:46px;text-align:center;color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
+
+#viewport{
+  transform-origin:top left;
+  transition:transform .18s ease;
+  flex:none;
+}
+
+/* ---------- panel ---------- */
+.panel,.panel-body,.sec-body,.field,.row,.song-card,.thumb-pick,.thumb-pick > div{min-width:0}
+.panel{
+  background:var(--panel);
+  border-left:1px solid var(--line);
+  display:flex;flex-direction:column;
+  height:100vh;min-height:0;
+}
+@media (max-width:1080px){ .panel{height:auto;max-height:none;border-left:0;border-top:1px solid var(--line)} }
+
+.panel-head{
+  padding:16px 18px 12px;
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.panel-head .t{
+  font-family:"Archivo",sans-serif;font-weight:700;font-size:12px;
+  letter-spacing:.10em;text-transform:uppercase;color:var(--muted);
+  margin-right:auto;
+}
+.panel-body{overflow-y:auto;padding:0 0 40px;flex:1}
+
+details.sec{border-bottom:1px solid var(--line)}
+details.sec > summary{
+  list-style:none;cursor:pointer;
+  padding:13px 18px;
+  display:flex;align-items:center;gap:10px;
+  font-weight:600;font-size:13.5px;
+  user-select:none;
+}
 details.sec > summary::-webkit-details-marker{display:none}
 details.sec > summary:hover{background:var(--panel-2)}
-.sec-num{font-family:"Archivo",sans-serif; font-size:10px; color:var(--ink-3); border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-variant-numeric:tabular-nums}
-.sec-chev{margin-left:auto; color:var(--ink-3); transition:transform .18s ease}
-details[open] > summary .sec-chev{transform:rotate(90deg)}
-.sec-body{padding:2px 18px 18px; display:flex; flex-direction:column; gap:13px}
-
-.field{display:flex; flex-direction:column; gap:6px}
-.field > label, .flabel{font-size:11px; color:var(--ink-2); font-weight:500}
-input[type=text], textarea, select{
-  width:100%; background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
-  border-radius:8px; padding:8px 10px; font:inherit; font-size:12.5px;
+details.sec > summary .chev{
+  margin-left:auto;color:var(--muted);
+  transition:transform .18s ease;display:grid;place-items:center;
 }
-textarea{resize:vertical; line-height:1.5; min-height:56px}
-input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
-.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-.row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px}
+details.sec[open] > summary .chev{transform:rotate(90deg)}
+details.sec > summary .num{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  color:var(--muted);width:16px;
+}
+.sec-body{padding:4px 18px 18px;display:flex;flex-direction:column;gap:13px}
 
-.segs{display:flex; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:3px; gap:3px}
-.segs.col{flex-direction:column}
-.segs button{flex:1; border:0; background:transparent; color:var(--ink-2); padding:7px 4px; border-radius:6px; font-size:12px; font-weight:500; cursor:pointer}
-.segs button:hover{color:var(--ink)}
-.segs button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
+/* ---------- controls ---------- */
+.row{display:flex;align-items:center;gap:10px}
+.row.wrap{flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px}
+.field > label,.lbl{
+  font-size:11.5px;font-weight:500;color:var(--muted);
+  letter-spacing:.01em;
+}
+input[type=text],input[type=number],select,textarea{
+  width:100%;max-width:100%;min-width:0;
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:8px 10px;
+  font-size:13px;
+  transition:border-color .15s;
+}
+input[type=text]:focus,select:focus,input[type=number]:focus{border-color:var(--line-strong)}
+select{cursor:pointer;appearance:none;background-image:none;padding-right:10px}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+input[type=color]{
+  width:34px;height:30px;padding:0;border:1px solid var(--line);
+  border-radius:8px;background:var(--panel-2);cursor:pointer;
+}
+input[type=color]::-webkit-color-swatch-wrapper{padding:3px}
+input[type=color]::-webkit-color-swatch{border:0;border-radius:5px}
 
-.switch{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel-2); cursor:pointer; font-size:12.5px; font-weight:500; color:var(--ink)}
-.switch .track{width:36px; height:20px; border-radius:999px; background:var(--line); position:relative; flex:none; transition:background .16s ease}
-.switch .track::after{content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .16s ease; box-shadow:0 1px 2px rgba(0,0,0,.3)}
-.switch[aria-pressed="true"] .track{background:var(--accent)}
-.switch[aria-pressed="true"] .track::after{transform:translateX(16px)}
-.switch[disabled]{opacity:.42; cursor:not-allowed}
+.toggle{
+  display:flex;align-items:center;gap:9px;cursor:pointer;
+  font-size:13px;font-weight:500;position:relative;
+}
+.toggle input{
+  position:absolute;left:0;top:0;width:1px;height:1px;
+  opacity:0;margin:0;pointer-events:none;
+}
+.toggle .track{
+  width:38px;height:22px;border-radius:999px;
+  background:var(--line-strong);position:relative;
+  transition:background .18s ease;flex:none;
+}
+.toggle .track::after{
+  content:"";position:absolute;top:2px;left:2px;
+  width:18px;height:18px;border-radius:999px;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+  transition:transform .18s cubic-bezier(.3,1.3,.5,1);
+}
+.toggle input:checked + .track{background:#34C759}
+.toggle input:checked + .track::after{transform:translateX(16px)}
+.toggle input:focus-visible + .track{outline:2px solid var(--focus);outline-offset:2px}
 
-.btn{border:1px solid var(--line); background:var(--panel-2); color:var(--ink); border-radius:8px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer}
-.btn:hover{border-color:var(--ink-3)}
-.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
-.btn.wide{width:100%}
-.btn.mini{padding:4px 8px; font-size:11px; border-radius:6px}
-
-.filepick{display:flex; align-items:center; gap:8px; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; background:var(--panel-2)}
-.filepick .thumb{width:44px; height:26px; border-radius:4px; flex:none; background:var(--line); background-size:cover; background-position:center}
-.filepick .thumb.circle{width:28px; height:28px; border-radius:50%}
-.filepick input[type=file]{display:none}
-.filepick .pk{font-size:11px; color:var(--ink-2); cursor:pointer; text-decoration:underline; text-underline-offset:2px}
-.hint{font-size:11px; color:var(--ink-3); line-height:1.55; margin:0}
-.fxbox{display:flex; flex-direction:column; gap:5px; border:1px solid var(--line); border-radius:9px; padding:8px 10px; background:var(--panel-2)}
-.fxrow{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--ink-2)}
-.fxrow > span{width:28px; flex:none}
-.fxrow input[type=range]{flex:1; accent-color:var(--accent); height:16px}
-.fxrow b{font-variant-numeric:tabular-nums; width:34px; text-align:right; font-weight:500; color:var(--ink-3)}
-
-/* 색상 팔레트 */
-.pal{display:flex; flex-wrap:wrap; gap:4px; align-items:center}
-.pal b{width:17px; height:17px; border-radius:50%; cursor:pointer; display:block; border:2px solid transparent}
-.pal b[aria-pressed="true"]{border-color:var(--ink); box-shadow:0 0 0 2px var(--panel) inset}
-.pal input[type=color]{width:22px; height:22px; padding:0; border:1px solid var(--line); border-radius:5px; background:none; cursor:pointer}
-
-.cnode{border:1px solid var(--line); border-radius:10px; background:var(--panel-2); padding:10px; display:flex; flex-direction:column; gap:8px}
-.cnode.lv1{background:transparent}
-.cnode-kids{margin-left:12px; padding-left:11px; border-left:2px solid var(--line); display:flex; flex-direction:column; gap:9px; margin-top:2px}
-.cnode-head{display:flex; align-items:center; gap:7px}
-.depth-tag{font-size:9.5px; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:4px; padding:2px 5px; flex:none}
-.cnode-head .sp{margin-left:auto; display:flex; gap:4px}
-.iconbtn{border:1px solid var(--line); background:var(--panel); color:var(--ink-2); width:24px; height:24px; border-radius:6px; cursor:pointer; font-size:11px; display:grid; place-items:center; padding:0; line-height:1}
-.iconbtn:hover{color:var(--ink); border-color:var(--ink-3)}
-.iconbtn.del:hover{color:var(--accent); border-color:var(--accent)}
-.chips{display:flex; flex-wrap:wrap; gap:5px}
-.chip{border:1px solid var(--line); background:var(--panel); color:var(--ink-2); border-radius:999px; padding:4px 9px; font-size:10.5px; font-weight:600; cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent)}
-.listitem{border:1px solid var(--line); border-radius:10px; padding:9px; display:flex; flex-direction:column; gap:7px; background:var(--panel-2)}
-
-@media (max-width:900px){
-  .app{grid-template-columns:1fr; grid-template-rows:auto auto; height:auto; min-height:0}
-  .rail{order:2; border-right:0; border-top:1px solid var(--line)}
-  .rail-body{overflow:visible; padding-bottom:8px}
-  .rail-foot{position:sticky; bottom:0; z-index:5}
-  .stage{order:1; min-height:0; padding:16px 10px 22px; align-items:flex-start}
-  .zoombar{right:12px; bottom:72px; padding:6px 11px; gap:7px}
-  .zoombar input[type=range]{width:74px}
+.segmented{
+  display:flex;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:9px;padding:2px;gap:2px;
+}
+.segmented button{
+  flex:1 1 0;min-width:0;border:0;background:transparent;cursor:pointer;
+  padding:6px 4px;border-radius:7px;font-size:12px;font-weight:500;
+  color:var(--muted);transition:.15s;white-space:nowrap;
+}
+.segmented button[aria-pressed=true]{
+  background:var(--panel);color:var(--ink);font-weight:600;
+  box-shadow:0 1px 3px rgba(0,0,0,.12);
 }
 
-/* ================================================================
-   유튜브 리플리카
-   ================================================================ */
-.yt{
-  --bg:#0f0f0f; --tx:#f1f1f1; --tx2:#aaaaaa; --chip:#272727; --chip2:#3f3f3f;
-  --bd:#303030; --input:#121212; --blue:#3ea6ff; --icon:#f1f1f1; --sheet:#212121;
-  font-family:"Roboto","Noto Sans KR",Arial,sans-serif; background:var(--bg); color:var(--tx);
+.btn{
+  border:1px solid var(--line);background:var(--panel-2);
+  border-radius:9px;padding:8px 12px;font-size:12.5px;font-weight:600;
+  cursor:pointer;transition:.15s;white-space:nowrap;
 }
-.yt[data-t="light"]{
-  --bg:#ffffff; --tx:#0f0f0f; --tx2:#606060; --chip:#f2f2f2; --chip2:#e5e5e5;
-  --bd:#e5e5e5; --input:#ffffff; --blue:#065fd4; --icon:#0f0f0f; --sheet:#ffffff;
+.btn:hover{border-color:var(--line-strong)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--accent);border-color:transparent;background:transparent;padding:6px 8px}
+.btn.danger:hover{background:var(--accent-soft)}
+.btn.full{width:100%;text-align:center}
+
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.swatches button{
+  width:24px;height:24px;border-radius:7px;border:1px solid rgba(0,0,0,.14);
+  cursor:pointer;padding:0;
 }
-.scrollpane{overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none}
-.scrollpane::-webkit-scrollbar{display:none}
-/* 원본 해상도를 유지하는 이미지 레이어 (max-width 리셋을 반드시 무효화) */
-.fximg{position:absolute; display:block; max-width:none !important; max-height:none !important; pointer-events:none}
+.hint{font-size:11px;color:var(--muted);line-height:1.45}
+.hint.warn{color:var(--accent)}
 
-.pc-screen{background:var(--bg); overflow:hidden; display:flex; flex-direction:column; position:relative}
-.macbar{height:28px; flex:none; background:linear-gradient(#f6f6f7,#eeeef0); color:#1c1c1e; display:flex; align-items:center; gap:19px; padding:0 15px; font-size:13px; font-weight:400; letter-spacing:-.1px; white-space:nowrap; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif; border-bottom:1px solid rgba(0,0,0,.09)}
-.macbar.dark{background:linear-gradient(#232326,#1d1d20); color:#f2f2f4; border-bottom-color:rgba(255,255,255,.09)}
-.macbar b{font-weight:600}
-.macbar .mright{margin-left:auto; display:flex; align-items:center; gap:14px; font-size:13px}
-.chrome{background:#dee1e6; padding-top:9px; flex:none}
-.chrome.dark{background:#202124}
-.chrome-tabs{display:flex; align-items:flex-end; padding:0 9px}
-.lights{display:flex; gap:8px; align-items:center; padding:0 12px 8px 4px}
-.lights i{width:12px; height:12px; border-radius:50%; display:block}
-.tabstrip{display:flex; align-items:flex-end; flex:1; min-width:0; overflow:hidden}
-.tab{height:34px; flex:1 1 244px; max-width:244px; min-width:54px; border-radius:9px 9px 0 0; display:flex; align-items:center; gap:7px; padding:0 10px; font-size:12px; color:#3c4043; background:transparent; overflow:hidden; white-space:nowrap}
-.chrome.dark .tab{color:#c8ccd0}
-.tab.active{background:#fff; color:#202124}
-.chrome.dark .tab.active{background:#35363a; color:#e8eaed}
-.tab .fav{width:15px; height:15px; border-radius:3px; flex:none; background-size:cover; background-position:center}
-.tab .tt{overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0}
-.tab .xx{opacity:.55; flex:none; font-size:13px}
-.newtab{width:32px; height:32px; display:grid; place-items:center; flex:none; color:#5f6368; font-size:17px; margin-bottom:2px}
-.chrome.dark .newtab{color:#9aa0a6}
-.bmarks i{background-size:cover; background-position:center}
-.chrome-bar{background:#fff; padding:6px 10px; display:flex; align-items:center; gap:8px}
-.chrome.dark .chrome-bar{background:#35363a}
-.chrome-bar .nav{display:flex; gap:2px; color:#5f6368; align-items:center}
-.chrome.dark .chrome-bar .nav{color:#9aa0a6}
-.navbtn{width:30px; height:30px; border-radius:50%; display:grid; place-items:center; flex:none}
-.navbtn.off{opacity:.38}
-.omni{flex:1; height:30px; border-radius:999px; background:#f1f3f4; display:flex; align-items:center; gap:9px; padding:0 13px; font-size:12.5px; color:#202124; overflow:hidden; white-space:nowrap}
-.chrome.dark .omni{background:#202124; color:#e8eaed}
-.bmarks{background:#fff; display:flex; align-items:center; gap:16px; padding:5px 12px 7px; font-size:11.5px; color:#3c4043; white-space:nowrap; overflow:hidden}
-.chrome.dark .bmarks{background:#35363a; color:#c8ccd0}
-.bmarks span{display:flex; align-items:center; gap:5px}
-.bmarks i{width:14px; height:14px; border-radius:3px; display:block; flex:none}
+.divider{height:1px;background:var(--line);margin:2px 0}
 
-.yt-page{flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg)}
-.yt-head{height:56px; flex:none; display:flex; align-items:center; gap:16px; padding:0 16px; background:var(--bg)}
-.yt-logo{display:flex; align-items:center; gap:5px}
-.yt-search{flex:1; display:flex; justify-content:center; align-items:center; max-width:730px; margin:0 auto}
-.sbox{flex:1; height:40px; border:1px solid var(--bd); border-radius:999px 0 0 999px; display:flex; align-items:center; padding:0 16px; gap:10px; background:var(--input); font-size:16px; color:var(--tx); max-width:540px}
-.sbtn{width:64px; height:40px; border:1px solid var(--bd); border-left:0; background:var(--chip); border-radius:0 999px 999px 0; display:grid; place-items:center; flex:none}
-.micbtn{width:40px; height:40px; border-radius:50%; background:var(--chip); display:grid; place-items:center; flex:none; margin-left:8px}
-.yt-head-right{display:flex; align-items:center; gap:10px; margin-left:auto}
-.create-btn{height:36px; border-radius:999px; background:var(--chip); display:flex; align-items:center; gap:6px; padding:0 15px; font-size:14px; font-weight:500}
-.bell{position:relative; width:40px; height:40px; display:grid; place-items:center}
-.bell .badge{position:absolute; top:2px; right:2px; background:#e53935; color:#fff; font-size:9px; font-weight:700; border-radius:999px; padding:1px 4px; line-height:1.3}
-.avatar{border-radius:50%; background-size:cover; background-position:center; flex:none; display:grid; place-items:center; color:#fff; font-weight:500; overflow:hidden; position:relative}
+/* song cards */
+.songs{display:flex;flex-direction:column;gap:10px}
+.song-card{
+  border:1px solid var(--line);border-radius:11px;
+  background:var(--panel-2);padding:10px;
+  display:flex;flex-direction:column;gap:9px;
+}
+.song-card .head{display:flex;align-items:center;gap:8px}
+.song-card .idx{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted);
+  width:18px;flex:none;
+}
+.song-card .head .grow{flex:1}
+.icon-btn{
+  border:0;background:transparent;cursor:pointer;color:var(--muted);
+  width:24px;height:24px;border-radius:6px;display:grid;place-items:center;
+}
+.icon-btn:hover{background:var(--panel);color:var(--ink)}
+.icon-btn[disabled]{opacity:.28;cursor:default}
+.thumb-pick{display:flex;gap:8px;align-items:flex-start}
+.thumb-prev{
+  width:44px;height:44px;border-radius:6px;flex:none;
+  background:#D1D1D6 center/cover no-repeat;
+  border:1px solid rgba(0,0,0,.10);
+}
+.file-btn{
+  border:1px dashed var(--line-strong);background:transparent;
+  border-radius:8px;padding:6px 9px;font-size:11.5px;cursor:pointer;
+  color:var(--ink-2);
+}
+.file-btn:hover{border-color:var(--accent);color:var(--accent)}
 
-.yt-body{flex:1; min-height:0; display:flex; gap:24px; padding:24px; align-items:stretch}
-.yt-main{flex:1; min-width:0; display:flex; flex-direction:column; min-height:0}
-.yt-side{width:402px; flex:none; display:flex; flex-direction:column; gap:8px; min-height:0}
-.player{width:100%; height:0; padding-top:56.25%; border-radius:12px; background:#000; background-size:cover; background-position:center; position:relative; overflow:hidden; flex:none}
-.player .dur{position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; border-radius:4px; padding:2px 4px}
+/* ---------- backdrop the device sits on ---------- */
+.canvas{
+  position:relative;flex:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.canvas.framed{overflow:hidden}
+.canvas .bg-fill{position:absolute;inset:0;background-position:center;background-repeat:no-repeat}
+.canvas .bg-dim{position:absolute;inset:0}
+.canvas > .frame{position:relative;z-index:2}
 
-/* 유튜브 플레이어 컨트롤 */
-.pl-ui{position:absolute; left:0; right:0; bottom:0; padding:0 12px 4px; color:#fff;
-  background:linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.55) 60%, rgba(0,0,0,.72))}
-.pl-track{position:relative; height:3px; background:rgba(255,255,255,.28); margin-bottom:5px}
-.pl-buffer{position:absolute; left:0; top:0; bottom:0; background:rgba(255,255,255,.45)}
-.pl-played{position:absolute; left:0; top:0; bottom:0; background:#ff0000; z-index:2}
-.pl-dot{position:absolute; top:50%; width:13px; height:13px; border-radius:50%; background:#ff0000; transform:translate(-50%,-50%); z-index:3}
-.pl-row{display:flex; align-items:center; height:42px}
-.pl-btn{width:36px; height:36px; display:grid; place-items:center; flex:none}
-.pl-time{font-size:13px; margin-left:10px; letter-spacing:.2px; font-variant-numeric:tabular-nums; white-space:nowrap}
-.pl-right{margin-left:auto; display:flex; align-items:center}
-.pl-hd{position:relative}
-.pl-hd i{position:absolute; top:3px; right:2px; background:#ff0000; color:#fff; font-size:7px; font-weight:700; border-radius:2px; padding:0 2px; line-height:1.4; font-style:normal; letter-spacing:.2px}
-.pl-m{position:absolute; inset:0; background:rgba(0,0,0,.22)}
-.pl-mbtn{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:52px; height:52px; color:#fff; display:grid; place-items:center}
-.pl-mtrack{position:absolute; left:12px; right:12px; bottom:11px; height:3px; background:rgba(255,255,255,.3)}
-.pl-mplayed{position:absolute; left:0; top:0; bottom:0; background:#ff0000}
-.pl-mdot{position:absolute; top:50%; width:12px; height:12px; border-radius:50%; background:#ff0000; transform:translate(-50%,-50%)}
-.vtitle{font-size:20px; font-weight:700; line-height:28px; margin:12px 0 0; color:var(--tx)}
-.vmeta{display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap}
-.vchan{display:flex; align-items:center; gap:12px}
-.vchan .nm{font-size:16px; font-weight:500; line-height:1.4}
-.vchan .subs{font-size:12px; color:var(--tx2)}
-.subbtn{height:36px; border-radius:999px; padding:0 16px; display:flex; align-items:center; font-size:14px; font-weight:500; background:var(--tx); color:var(--bg)}
-.subbtn.on{background:var(--chip); color:var(--tx)}
-.vactions{display:flex; gap:8px; margin-left:auto; flex-wrap:wrap}
-.pill{height:36px; border-radius:999px; background:var(--chip); display:flex; align-items:center; gap:7px; padding:0 14px; font-size:14px; font-weight:500}
-.pill .sep{width:1px; height:22px; background:var(--chip2)}
-.vdesc{margin-top:12px; background:var(--chip); border-radius:12px; padding:12px; font-size:14px; line-height:20px; flex:none}
+/* ============================================================
+   MOCKUP — iOS Apple Music
+   ============================================================ */
+.frame{position:relative;flex:none}
+.frame .body{
+  position:relative;
+  background:var(--dev-body,#1c1c1e);
+  border-radius:var(--dev-body-r,68px);
+  padding:var(--dev-pad-t,11px) var(--dev-pad-x,11px) var(--dev-pad-b,11px);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.30),
+    inset 0 0 0 3px rgba(0,0,0,.22),
+    var(--dev-shadow,0 30px 60px rgba(0,0,0,.28));
+}
+.frame.plain .body{padding:0;background:none;border-radius:0;box-shadow:none}
+.frame.plain .screen{box-shadow:var(--dev-shadow,0 24px 48px rgba(0,0,0,.22))}
 
-.cm-head{display:flex; align-items:center; gap:32px; margin:22px 0 20px; flex:none}
-.cm-count{font-size:20px; font-weight:700}
-.cm-sort{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500}
-.cm-add{display:flex; align-items:center; gap:16px; margin-bottom:26px; flex:none}
-.cm-add .ln{flex:1; border-bottom:1px solid var(--bd); padding-bottom:7px; color:var(--tx2); font-size:14px}
-.cm-list{display:flex; flex-direction:column; gap:16px; padding-bottom:8px}
-.cm{display:flex; gap:16px}
-.cm .body{flex:1; min-width:0}
-.cm-top{display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:2px}
-.pinrow{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--tx2); margin-bottom:6px; font-weight:500}
-.cm-name{font-size:13px; font-weight:500; line-height:18px}
-.cm-name.owner{background:var(--chip); border-radius:999px; padding:2px 7px}
-.cm-time{font-size:12px; color:var(--tx2)}
-.cm-text{font-size:14px; line-height:20px; white-space:pre-wrap; word-break:break-word}
-.cm-more{font-size:14px; color:var(--tx2); margin-top:2px}
-.cm-acts{display:flex; align-items:center; gap:8px; margin-top:6px; color:var(--tx2); font-size:12px}
-.cm-acts .lk{display:flex; align-items:center; gap:6px}
-.cm-acts .reply{font-size:12px; font-weight:500; color:var(--tx); padding:0 8px; height:32px; display:flex; align-items:center; border-radius:999px}
-.heart-wrap{position:relative; width:22px; height:22px; margin-left:2px}
-.heart-wrap .ha{position:absolute; inset:0; border-radius:50%; overflow:hidden; background-size:cover; background-position:center}
-.heart-wrap .hh{position:absolute; right:-4px; bottom:-4px; font-size:11px}
-.replies{margin-top:14px; display:flex; flex-direction:column; gap:14px}
-.replies.thread{border-left:2px solid var(--bd); padding-left:14px}
-.toggle-replies{display:flex; align-items:center; gap:8px; color:var(--blue); font-size:14px; font-weight:500; margin-top:10px}
-.badge-19{width:16px; height:16px; border-radius:50%; background:#e53935; color:#fff; font-size:8px; font-weight:700; display:grid; place-items:center; flex:none}
+.screen{
+  position:relative;
+  overflow:hidden;
+  border-radius:var(--screen-r,55px);
+  background:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  color:#fff;
+  display:flex;flex-direction:column;
+  isolation:isolate;
+}
+.screen *{box-sizing:border-box}
 
-.rec{display:flex; gap:8px; flex:none}
-.rec .th{width:168px; height:94px; border-radius:8px; flex:none; background-size:cover; background-position:center; position:relative; overflow:hidden}
-.rec .th .d{position:absolute; right:4px; bottom:4px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; padding:1px 4px; border-radius:4px}
-.rec .info{flex:1; min-width:0; padding-right:20px}
-.rec .rt{font-size:14px; font-weight:500; line-height:20px; max-height:40px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
-.rec .rc{font-size:12px; color:var(--tx2); margin-top:5px; line-height:18px}
+/* device hardware bits */
+.notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:164px;height:31px;background:#000;
+  border-radius:0 0 20px 20px;z-index:40;
+}
+.island{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  width:125px;height:36px;background:#000;border-radius:20px;z-index:40;
+}
+.speaker{
+  position:absolute;top:-56px;left:50%;transform:translateX(-50%);
+  width:64px;height:7px;border-radius:4px;background:rgba(255,255,255,.16);
+}
+.camera-c{
+  position:absolute;top:-56px;left:calc(50% + 52px);
+  width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.18);
+}
+.home-btn{
+  position:absolute;bottom:-72px;left:50%;transform:translateX(-50%);
+  width:52px;height:52px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.22);
+}
+.side-btn{position:absolute;background:var(--dev-btn,#3a3a3c);border-radius:2px}
 
-/* ================ 모바일 ================ */
-.mb-screen{background:var(--bg); overflow:hidden; display:flex; flex-direction:column; position:relative}
-.mb-status{flex:none; display:flex; align-items:center; justify-content:space-between; padding:20px 30px 8px 36px; background:#000; color:#fff; font-size:17px; font-weight:600; font-family:-apple-system,"Roboto",sans-serif}
-.mb-status .rr{display:flex; align-items:center; gap:7px}
-.mb-player{width:100%; height:0; padding-top:56.25%; background:#000; background-size:cover; background-position:center; flex:none; position:relative; overflow:hidden}
-.mb-scroll{flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg)}
-.mb-vtitle{font-size:16px; font-weight:600; line-height:22px; padding:12px 12px 0}
-.mb-vmeta{font-size:12px; color:var(--tx2); padding:4px 12px 0; line-height:18px; display:flex; gap:6px; flex-wrap:wrap}
-.mb-vmeta .more{color:var(--tx); font-weight:500}
-.mb-chanrow{display:flex; align-items:center; gap:10px; padding:12px}
-.mb-act{height:34px; border-radius:999px; background:var(--chip); display:flex; align-items:center; gap:6px; padding:0 14px; font-size:13px; font-weight:600}
-.mb-cmcard{margin:0 12px 14px; background:var(--chip); border-radius:12px; padding:12px; flex:none}
-.mb-cmcard .h{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; margin-bottom:8px}
-.mb-cmcard .h .n{font-size:12px; color:var(--tx2); font-weight:400}
-.mb-cmcard .p{display:flex; gap:8px; font-size:13px; line-height:18px}
-.mb-rec{padding:0 0 14px; flex:none}
-.mb-rec .thumb{width:100%; height:0; padding-top:56.25%; background-size:cover; background-position:center; position:relative; overflow:hidden}
-.mb-rec .thumb .d{position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; padding:2px 4px; border-radius:4px}
-.mb-rec .meta{display:flex; gap:12px; padding:12px 12px 0}
-.mb-rec .rt{font-size:14px; font-weight:500; line-height:20px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
-.mb-rec .rc{font-size:12px; color:var(--tx2); margin-top:4px}
+/* ---- status bar ---- */
+.statusbar{
+  position:relative;z-index:30;
+  display:flex;align-items:center;
+  padding:0 30px;
+  flex:none;
+  font-feature-settings:"tnum";
+}
+.sb-left{display:flex;align-items:center;gap:5px;flex:1}
+.sb-time{
+  font-size:17px;font-weight:600;letter-spacing:-.2px;
+  font-variant-numeric:tabular-nums;
+}
+.sb-right{display:flex;align-items:center;gap:6px}
+.sb-right svg{display:block}
 
-.mb-sheet{background:var(--sheet); border-radius:14px 14px 0 0; flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden}
-.mb-sheet.full{border-radius:0}
-.mb-grab{width:36px; height:4px; border-radius:999px; background:var(--tx2); opacity:.5; margin:8px auto 4px; flex:none}
-.mb-sheet-head{display:flex; align-items:center; gap:10px; padding:8px 16px 12px; flex:none}
-.mb-sheet-head .t{font-size:16px; font-weight:600}
-.mb-sheet-head .sp{margin-left:auto; display:flex; gap:16px; align-items:center; color:var(--tx)}
-.mb-sortchips{display:flex; gap:8px; padding:0 16px 12px; flex:none}
-.mb-sortchip{height:32px; border-radius:999px; background:var(--chip); display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500}
-.mb-sortchip.on{background:var(--tx); color:var(--bg)}
-.mb-guide{padding:0 16px 14px; font-size:12px; line-height:18px; color:var(--tx2); flex:none}
-.mb-cmlist{flex:1; min-height:0; padding:0 16px}
-.mb-cmlist .spin{display:flex; flex-direction:column; gap:18px; padding-bottom:10px}
-.mb-input{display:flex; align-items:center; gap:10px; padding:10px 12px 6px; border-top:1px solid var(--bd); flex:none}
-.mb-input .box{flex:1; height:38px; border-radius:999px; background:var(--chip); display:flex; align-items:center; padding:0 14px; color:var(--tx2); font-size:13px}
-.mb-input .circ{width:34px; height:34px; border-radius:50%; background:var(--chip); display:grid; place-items:center; flex:none; font-size:15px}
-.mb-home{width:145px; height:5px; border-radius:999px; background:var(--tx); opacity:.9; margin:8px auto 9px; flex:none}
+/* ---- nav bar ---- */
+.navbar{
+  display:flex;align-items:center;
+  padding:6px 20px 4px;flex:none;position:relative;z-index:30;
+}
+.glass-btn{
+  width:40px;height:40px;border-radius:999px;
+  display:grid;place-items:center;flex:none;
+}
+.glass-group{
+  margin-left:auto;display:flex;align-items:center;
+  border-radius:999px;height:40px;padding:0 5px;gap:3px;
+}
+.glass-group .gi{width:38px;height:40px;display:grid;place-items:center}
 
-.mb .cm{gap:12px}
-.mb .cm-name{font-size:12px; color:var(--tx2)}
-.mb .cm-text{font-size:13.5px; line-height:19px}
-.mb .replies{margin-top:12px}
-.mb .replies.thread{padding-left:10px}
-.mb .toggle-replies{font-size:13px}
+/* ---- scroll area ---- */
+.content{
+  flex:1;display:flex;flex-direction:column;min-height:0;
+  overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+.content::-webkit-scrollbar{display:none}
+.cover-wrap,.pl-title,.pl-artist,.action-row{flex:none}
 
-/* ================ 목업 ================ */
-.mockcol{display:flex; flex-direction:column; align-items:center}
-.lid{background:#181819; border-radius:22px; padding:12px; position:relative; box-shadow:0 22px 60px rgba(0,0,0,.35)}
-.lid .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:19px; background:#181819; border-radius:0 0 12px 12px; z-index:3}
-.lid .inner{border-radius:10px; overflow:hidden; background:#000}
-.lid-base{width:116%; height:15px; background:linear-gradient(#c8ccd2,#9ea3ab); border-radius:0 0 14px 14px; position:relative}
-.lid-base::after{content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:130px; height:8px; background:#8d929a; border-radius:0 0 8px 8px}
-.imac-body{background:#e9eaec; border-radius:20px; padding:16px 16px 0; display:flex; flex-direction:column; align-items:center; box-shadow:0 22px 60px rgba(0,0,0,.3)}
-.imac-body .inner{border-radius:6px; overflow:hidden; background:#000}
-.imac-chin{height:78px; display:grid; place-items:center; width:100%}
-.imac-neck{width:132px; height:92px; background:linear-gradient(90deg,#c9ccd1,#e6e8ea 30%,#d4d7db)}
-.imac-foot{width:420px; height:14px; border-radius:0 0 10px 10px; background:linear-gradient(#d9dcdf,#b9bdc3)}
-.iph-body{background:#22242a; border-radius:66px; padding:11px; position:relative; box-shadow:0 26px 70px rgba(0,0,0,.45)}
-.iph-body::before{content:""; position:absolute; inset:2px; border-radius:64px; border:2px solid #6f7480; pointer-events:none}
-.iph-body .inner{border-radius:55px; overflow:hidden; position:relative; background:#000}
-.iph-island{position:absolute; top:24px; left:50%; transform:translateX(-50%); width:126px; height:37px; background:#000; border-radius:999px; z-index:5}
-.plain-shadow{box-shadow:0 12px 44px rgba(0,0,0,.2)}
+.cover-wrap{display:flex;justify-content:center;padding:10px 0 0}
+.screen.flat .cover{box-shadow:none}
+.cover{
+  width:70%;aspect-ratio:1;
+  border-radius:10px;
+  background:#D1D1D6 center/cover no-repeat;
+  box-shadow:0 10px 26px rgba(0,0,0,.26);
+  display:grid;place-items:center;
+  overflow:hidden;
+}
+.cover .ph{width:34%;height:34%;opacity:.42}
+
+.pl-title{
+  text-align:center;font-size:25px;font-weight:600;letter-spacing:-.45px;
+  margin:16px 20px 0;line-height:1.22;text-wrap:balance;
+}
+.pl-artist{
+  text-align:center;font-size:19px;font-weight:400;letter-spacing:-.2px;
+  margin:2px 20px 0;
+}
+
+.action-row{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:18px 20px 6px;
+}
+.act-circle{
+  width:52px;height:52px;border-radius:999px;flex:none;
+  display:grid;place-items:center;
+}
+.play-pill{
+  height:52px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:0 34px;min-width:180px;
+  font-size:18px;font-weight:600;letter-spacing:-.2px;
+}
+
+.tracks{padding:12px 20px 16px;display:flex;flex-direction:column}
+.trk{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 0;position:relative;min-height:60px;
+}
+.trk + .trk::before,.trk.first::before{
+  content:"";position:absolute;top:0;height:.5px;
+  left:var(--sep-left,26px);right:0;
+  background:var(--sep,rgba(255,255,255,.24));
+}
+.star{width:16px;flex:none;display:grid;place-items:center}
+.star svg{width:14px;height:14px}
+.tk-art{
+  width:46px;height:46px;border-radius:4px;flex:none;
+  background:#D1D1D6 center/cover no-repeat;
+  display:grid;place-items:center;overflow:hidden;
+  border:.5px solid rgba(0,0,0,.10);
+}
+.tk-art .ph{width:44%;height:44%;opacity:.42}
+.tk-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.tk-title{
+  font-size:17px;font-weight:500;letter-spacing:-.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.tk-artist{
+  font-size:15px;font-weight:400;letter-spacing:-.2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.tk-more{flex:none;padding-left:4px}
+
+/* ---- bottom stack ---- */
+.bottom{
+  position:absolute;z-index:20;
+  left:0;right:0;bottom:var(--bottom-offset,10px);
+  padding:0 14px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.mini{
+  display:flex;align-items:center;gap:10px;
+  height:58px;border-radius:20px;padding:0 12px;
+}
+.mini-art{
+  width:40px;height:40px;border-radius:6px;flex:none;
+  background:#D1D1D6 center/cover no-repeat;
+  display:grid;place-items:center;overflow:hidden;
+}
+.mini-art .ph{width:46%;height:46%;opacity:.42}
+.mini-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:0}
+.mini-title{font-size:15.5px;font-weight:600;letter-spacing:-.25px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-artist{font-size:13px;font-weight:400;letter-spacing:-.15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-ctl{display:flex;align-items:center;gap:16px;padding-right:4px;flex:none}
+
+.tabrow{display:flex;align-items:center;gap:8px}
+.tabbar{
+  flex:1;display:flex;align-items:center;justify-content:space-between;
+  height:62px;border-radius:26px;padding:0 6px;
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;height:52px;border-radius:20px;
+}
+.tab .ic{height:26px;display:grid;place-items:center}
+.tab .lb{font-size:10.5px;font-weight:500;letter-spacing:-.1px;white-space:nowrap}
+.tab-search{
+  width:62px;height:62px;border-radius:999px;flex:none;
+  display:grid;place-items:center;
+}
+.home-ind{
+  height:0;display:flex;justify-content:center;align-items:flex-end;
+  padding-bottom:8px;margin-top:6px;
+}
+.home-ind i{
+  display:block;width:140px;height:5px;border-radius:3px;
+}
+.pad-b{flex:none}
+
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important}
+}
 </style>
-
 </head>
 <body>
 <div class="app">
-  <aside class="rail">
-    <div class="rail-head">
-      <h1 class="brand">댓글창 <em>메이커</em></h1>
-      <span class="brand-sub">YouTube comment mockup</span>
+
+  <!-- ============ STAGE ============ -->
+  <main class="stage">
+    <div class="brand">
+      <span class="mark"><svg viewBox="0 0 24 24"><path d="M20 3.5v12.2a3.4 3.4 0 1 1-2-3.1V7.2l-8 1.6v9.4a3.4 3.4 0 1 1-2-3.1V6.3l12-2.8z"/></svg></span>
+      <h1>APPLE MUSIC MAKER</h1>
+      <span class="sub">iOS 플레이리스트 목업</span>
     </div>
-    <div class="rail-body" id="rail"></div>
-    <div class="rail-foot">
-      <button class="btn wide primary" id="btnPng">PNG로 저장</button>
-      <button class="btn" id="btnReset">초기화</button>
-    </div>
-  </aside>
-  <main class="stage" id="stage">
-    <div class="stage-box" id="stageBox">
-      <div class="stage-inner" id="stageInner"><div id="capture"></div></div>
+
+    <div id="viewport"></div>
+
+    <div class="stage-tools">
+      <div class="zoom">
+        <button type="button" id="zoomOut" aria-label="축소"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 8h10"/></svg></button>
+        <span class="val" id="zoomVal">100%</span>
+        <button type="button" id="zoomIn" aria-label="확대"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg></button>
+        <button type="button" id="zoomFit" aria-label="맞춤" style="width:auto;padding:0 10px;font-size:11.5px;font-weight:600">맞춤</button>
+      </div>
+      <button type="button" class="btn" id="fullBtn">전체보기</button>
     </div>
   </main>
-</div>
-<div class="zoombar">
-  <span style="color:var(--ink-2)">확대</span>
-  <input type="range" id="zoom" min="10" max="130" value="60">
-  <span class="zoomval" id="zoomVal">60%</span>
-  <button class="btn mini" id="btnFit">맞춤</button>
+
+  <!-- ============ PANEL ============ -->
+  <aside class="panel">
+    <div class="panel-head">
+      <span class="t">Controls</span>
+      <button type="button" class="btn ghost" id="themeBtn" title="에디터 테마">🌓</button>
+      <button type="button" class="btn primary" id="exportBtn">PNG 저장</button>
+    </div>
+    <div class="panel-body" id="panelBody"></div>
+  </aside>
+
 </div>
 
+<script>/* html-to-image 1.11.13 (MIT) — inlined so saving works offline */
+!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).htmlToImage={})}(this,function(t){"use strict";function e(t,e,n,r){return new(n||(n=Promise))(function(i,o){function u(t){try{a(r.next(t))}catch(t){o(t)}}function c(t){try{a(r.throw(t))}catch(t){o(t)}}function a(t){var e;t.done?i(t.value):(e=t.value,e instanceof n?e:new n(function(t){t(e)})).then(u,c)}a((r=r.apply(t,e||[])).next())})}function n(t,e){var n,r,i,o,u={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return o={next:c(0),throw:c(1),return:c(2)},"function"==typeof Symbol&&(o[Symbol.iterator]=function(){return this}),o;function c(c){return function(a){return function(c){if(n)throw new TypeError("Generator is already executing.");for(;o&&(o=0,c[0]&&(u=0)),u;)try{if(n=1,r&&(i=2&c[0]?r.return:c[0]?r.throw||((i=r.return)&&i.call(r),0):r.next)&&!(i=i.call(r,c[1])).done)return i;switch(r=0,i&&(c=[2&c[0],i.value]),c[0]){case 0:case 1:i=c;break;case 4:return u.label++,{value:c[1],done:!1};case 5:u.label++,r=c[1],c=[0];continue;case 7:c=u.ops.pop(),u.trys.pop();continue;default:if(!((i=(i=u.trys).length>0&&i[i.length-1])||6!==c[0]&&2!==c[0])){u=0;continue}if(3===c[0]&&(!i||c[1]>i[0]&&c[1]<i[3])){u.label=c[1];break}if(6===c[0]&&u.label<i[1]){u.label=i[1],i=c;break}if(i&&u.label<i[2]){u.label=i[2],u.ops.push(c);break}i[2]&&u.ops.pop(),u.trys.pop();continue}c=e.call(t,u)}catch(t){c=[6,t],r=0}finally{n=i=0}if(5&c[0])throw c[1];return{value:c[0]?c[1]:void 0,done:!0}}([c,a])}}}var r,i=(r=0,function(){return r+=1,"u".concat("0000".concat((Math.random()*Math.pow(36,4)|0).toString(36)).slice(-4)).concat(r)});function o(t){for(var e=[],n=0,r=t.length;n<r;n++)e.push(t[n]);return e}var u=null;function c(t){return void 0===t&&(t={}),u||(u=t.includeStyleProperties?t.includeStyleProperties:o(window.getComputedStyle(document.documentElement)))}function a(t,e){var n=(t.ownerDocument.defaultView||window).getComputedStyle(t).getPropertyValue(e);return n?parseFloat(n.replace("px","")):0}function s(t,e){void 0===e&&(e={});var n,r,i,o=e.width||(r=a(n=t,"border-left-width"),i=a(n,"border-right-width"),n.clientWidth+r+i),u=e.height||function(t){var e=a(t,"border-top-width"),n=a(t,"border-bottom-width");return t.clientHeight+e+n}(t);return{width:o,height:u}}var l=16384;function f(t,e){return void 0===e&&(e={}),t.toBlob?new Promise(function(n){t.toBlob(n,e.type?e.type:"image/png",e.quality?e.quality:1)}):new Promise(function(n){for(var r=window.atob(t.toDataURL(e.type?e.type:void 0,e.quality?e.quality:void 0).split(",")[1]),i=r.length,o=new Uint8Array(i),u=0;u<i;u+=1)o[u]=r.charCodeAt(u);n(new Blob([o],{type:e.type?e.type:"image/png"}))})}function h(t){return new Promise(function(e,n){var r=new Image;r.onload=function(){r.decode().then(function(){requestAnimationFrame(function(){return e(r)})})},r.onerror=n,r.crossOrigin="anonymous",r.decoding="async",r.src=t})}function d(t){return e(this,void 0,void 0,function(){return n(this,function(e){return[2,Promise.resolve().then(function(){return(new XMLSerializer).serializeToString(t)}).then(encodeURIComponent).then(function(t){return"data:image/svg+xml;charset=utf-8,".concat(t)})]})})}function v(t,r,i){return e(this,void 0,void 0,function(){var e,o,u;return n(this,function(n){return e="http://www.w3.org/2000/svg",o=document.createElementNS(e,"svg"),u=document.createElementNS(e,"foreignObject"),o.setAttribute("width","".concat(r)),o.setAttribute("height","".concat(i)),o.setAttribute("viewBox","0 0 ".concat(r," ").concat(i)),u.setAttribute("width","100%"),u.setAttribute("height","100%"),u.setAttribute("x","0"),u.setAttribute("y","0"),u.setAttribute("externalResourcesRequired","true"),o.appendChild(u),u.appendChild(t),[2,d(o)]})})}var p=function(t,e){if(t instanceof e)return!0;var n=Object.getPrototypeOf(t);return null!==n&&(n.constructor.name===e.name||p(n,e))};function g(t,e,n,r){var i=".".concat(t,":").concat(e),o=n.cssText?function(t){var e=t.getPropertyValue("content");return"".concat(t.cssText," content: '").concat(e.replace(/'|"/g,""),"';")}(n):function(t,e){return c(e).map(function(e){var n=t.getPropertyValue(e),r=t.getPropertyPriority(e);return"".concat(e,": ").concat(n).concat(r?" !important":"",";")}).join(" ")}(n,r);return document.createTextNode("".concat(i,"{").concat(o,"}"))}function m(t,e,n,r){var o=window.getComputedStyle(t,n),u=o.getPropertyValue("content");if(""!==u&&"none"!==u){var c=i();try{e.className="".concat(e.className," ").concat(c)}catch(t){return}var a=document.createElement("style");a.appendChild(g(c,n,o,r)),e.appendChild(a)}}var w="application/font-woff",y="image/jpeg",b={woff:w,woff2:w,ttf:"application/font-truetype",eot:"application/vnd.ms-fontobject",png:"image/png",jpg:y,jpeg:y,gif:"image/gif",tiff:"image/tiff",svg:"image/svg+xml",webp:"image/webp"};function S(t){var e=function(t){var e=/\.([^./]*?)$/g.exec(t);return e?e[1]:""}(t).toLowerCase();return b[e]||""}function E(t){return-1!==t.search(/^(data:)/)}function x(t,e){return"data:".concat(e,";base64,").concat(t)}function C(t,r,i){return e(this,void 0,void 0,function(){var e,o;return n(this,function(n){switch(n.label){case 0:return[4,fetch(t,r)];case 1:if(404===(e=n.sent()).status)throw new Error('Resource "'.concat(e.url,'" not found'));return[4,e.blob()];case 2:return o=n.sent(),[2,new Promise(function(t,n){var r=new FileReader;r.onerror=n,r.onloadend=function(){try{t(i({res:e,result:r.result}))}catch(t){n(t)}},r.readAsDataURL(o)})]}})})}var P={};function R(t,r,i){return e(this,void 0,void 0,function(){var e,o,u,c,a;return n(this,function(n){switch(n.label){case 0:if(e=function(t,e,n){var r=t.replace(/\?.*/,"");return n&&(r=t),/ttf|otf|eot|woff2?/i.test(r)&&(r=r.replace(/.*\//,"")),e?"[".concat(e,"]").concat(r):r}(t,r,i.includeQueryParams),null!=P[e])return[2,P[e]];i.cacheBust&&(t+=(/\?/.test(t)?"&":"?")+(new Date).getTime()),n.label=1;case 1:return n.trys.push([1,3,,4]),[4,C(t,i.fetchRequestInit,function(t){var e=t.res,n=t.result;return r||(r=e.headers.get("Content-Type")||""),function(t){return t.split(/,/)[1]}(n)})];case 2:return u=n.sent(),o=x(u,r),[3,4];case 3:return c=n.sent(),o=i.imagePlaceholder||"",a="Failed to fetch resource: ".concat(t),c&&(a="string"==typeof c?c:c.message),a&&console.warn(a),[3,4];case 4:return P[e]=o,[2,o]}})})}function T(t){return e(this,void 0,void 0,function(){var e;return n(this,function(n){return"data:,"===(e=t.toDataURL())?[2,t.cloneNode(!1)]:[2,h(e)]})})}function A(t,r){return e(this,void 0,void 0,function(){var e,i,o,u;return n(this,function(n){switch(n.label){case 0:return t.currentSrc?(e=document.createElement("canvas"),i=e.getContext("2d"),e.width=t.clientWidth,e.height=t.clientHeight,null==i||i.drawImage(t,0,0,e.width,e.height),[2,h(e.toDataURL())]):(o=t.poster,u=S(o),[4,R(o,u,r)]);case 1:return[2,h(n.sent())]}})})}function L(t,r){var i;return e(this,void 0,void 0,function(){return n(this,function(e){switch(e.label){case 0:return e.trys.push([0,3,,4]),(null===(i=null==t?void 0:t.contentDocument)||void 0===i?void 0:i.body)?[4,N(t.contentDocument.body,r,!0)]:[3,2];case 1:return[2,e.sent()];case 2:return[3,4];case 3:return e.sent(),[3,4];case 4:return[2,t.cloneNode(!1)]}})})}var k=function(t){return null!=t.tagName&&"SVG"===t.tagName.toUpperCase()};function N(t,r,i){return e(this,void 0,void 0,function(){return n(this,function(u){return i||!r.filter||r.filter(t)?[2,Promise.resolve(t).then(function(t){return function(t,r){return e(this,void 0,void 0,function(){return n(this,function(e){return p(t,HTMLCanvasElement)?[2,T(t)]:p(t,HTMLVideoElement)?[2,A(t,r)]:p(t,HTMLIFrameElement)?[2,L(t,r)]:[2,t.cloneNode(k(t))]})})}(t,r)}).then(function(i){return function(t,r,i){var u,c;return e(this,void 0,void 0,function(){var e;return n(this,function(n){switch(n.label){case 0:return k(r)?[2,r]:(e=[],0===(e=null!=(a=t).tagName&&"SLOT"===a.tagName.toUpperCase()&&t.assignedNodes?o(t.assignedNodes()):p(t,HTMLIFrameElement)&&(null===(u=t.contentDocument)||void 0===u?void 0:u.body)?o(t.contentDocument.body.childNodes):o((null!==(c=t.shadowRoot)&&void 0!==c?c:t).childNodes)).length||p(t,HTMLVideoElement)?[2,r]:[4,e.reduce(function(t,e){return t.then(function(){return N(e,i)}).then(function(t){t&&r.appendChild(t)})},Promise.resolve())]);case 1:return n.sent(),[2,r]}var a})})}(t,i,r)}).then(function(e){return function(t,e,n){return p(e,Element)&&(function(t,e,n){var r=e.style;if(r){var i=window.getComputedStyle(t);i.cssText?(r.cssText=i.cssText,r.transformOrigin=i.transformOrigin):c(n).forEach(function(n){var o=i.getPropertyValue(n);if("font-size"===n&&o.endsWith("px")){var u=Math.floor(parseFloat(o.substring(0,o.length-2)))-.1;o="".concat(u,"px")}p(t,HTMLIFrameElement)&&"display"===n&&"inline"===o&&(o="block"),"d"===n&&e.getAttribute("d")&&(o="path(".concat(e.getAttribute("d"),")")),r.setProperty(n,o,i.getPropertyPriority(n))})}}(t,e,n),function(t,e,n){m(t,e,":before",n),m(t,e,":after",n)}(t,e,n),function(t,e){p(t,HTMLTextAreaElement)&&(e.innerHTML=t.value),p(t,HTMLInputElement)&&e.setAttribute("value",t.value)}(t,e),function(t,e){if(p(t,HTMLSelectElement)){var n=e,r=Array.from(n.children).find(function(e){return t.value===e.getAttribute("value")});r&&r.setAttribute("selected","")}}(t,e)),e}(t,e,r)}).then(function(t){return function(t,r){return e(this,void 0,void 0,function(){var e,i,o,u,c,a,s,l,f,h,d,v,p;return n(this,function(n){switch(n.label){case 0:if(0===(e=t.querySelectorAll?t.querySelectorAll("use"):[]).length)return[2,t];i={},p=0,n.label=1;case 1:return p<e.length?(o=e[p],(u=o.getAttribute("xlink:href"))?(c=t.querySelector(u),a=document.querySelector(u),c||!a||i[u]?[3,3]:(s=i,l=u,[4,N(a,r,!0)])):[3,3]):[3,4];case 2:s[l]=n.sent(),n.label=3;case 3:return p++,[3,1];case 4:if((f=Object.values(i)).length){for(h="http://www.w3.org/1999/xhtml",(d=document.createElementNS(h,"svg")).setAttribute("xmlns",h),d.style.position="absolute",d.style.width="0",d.style.height="0",d.style.overflow="hidden",d.style.display="none",v=document.createElementNS(h,"defs"),d.appendChild(v),p=0;p<f.length;p++)v.appendChild(f[p]);t.appendChild(d)}return[2,t]}})})}(t,r)})]:[2,null]})})}var I=/url\((['"]?)([^'"]+?)\1\)/g,D=/url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g,H=/src:\s*(?:url\([^)]+\)\s*format\([^)]+\)[,;]\s*)+/g;function M(t,r,i,o,u){return e(this,void 0,void 0,function(){var e,c,a,s;return n(this,function(n){switch(n.label){case 0:return n.trys.push([0,5,,6]),e=i?function(t,e){if(t.match(/^[a-z]+:\/\//i))return t;if(t.match(/^\/\//))return window.location.protocol+t;if(t.match(/^[a-z]+:/i))return t;var n=document.implementation.createHTMLDocument(),r=n.createElement("base"),i=n.createElement("a");return n.head.appendChild(r),n.body.appendChild(i),e&&(r.href=e),i.href=t,i.href}(r,i):r,c=S(r),a=void 0,u?[4,u(e)]:[3,2];case 1:return s=n.sent(),a=x(s,c),[3,4];case 2:return[4,R(e,c,o)];case 3:a=n.sent(),n.label=4;case 4:return[2,t.replace((l=r,f=l.replace(/([.*+?^${}()|\[\]\/\\])/g,"\\$1"),new RegExp("(url\\(['\"]?)(".concat(f,")(['\"]?\\))"),"g")),"$1".concat(a,"$3"))];case 5:return n.sent(),[3,6];case 6:return[2,t]}var l,f})})}function F(t){return-1!==t.search(I)}function V(t,r,i){return e(this,void 0,void 0,function(){var e,o;return n(this,function(n){return F(t)?(e=function(t,e){var n=e.preferredFontFormat;return n?t.replace(H,function(t){for(;;){var e=D.exec(t)||[],r=e[0],i=e[2];if(!i)return"";if(i===n)return"src: ".concat(r,";")}}):t}(t,i),o=function(t){var e=[];return t.replace(I,function(t,n,r){return e.push(r),t}),e.filter(function(t){return!E(t)})}(e),[2,o.reduce(function(t,e){return t.then(function(t){return M(t,e,r,i)})},Promise.resolve(e))]):[2,t]})})}function q(t,r,i){var o;return e(this,void 0,void 0,function(){var e,u;return n(this,function(n){switch(n.label){case 0:return(e=null===(o=r.style)||void 0===o?void 0:o.getPropertyValue(t))?[4,V(e,null,i)]:[3,2];case 1:return u=n.sent(),r.style.setProperty(t,u,r.style.getPropertyPriority(t)),[2,!0];case 2:return[2,!1]}})})}function U(t,r){return e(this,void 0,void 0,function(){var e,i;return n(this,function(n){switch(n.label){case 0:return[4,q("background",t,r)];case 1:return n.sent()?[3,3]:[4,q("background-image",t,r)];case 2:n.sent(),n.label=3;case 3:return[4,q("mask",t,r)];case 4:return(i=n.sent())?[3,6]:[4,q("-webkit-mask",t,r)];case 5:i=n.sent(),n.label=6;case 6:return(e=i)?[3,8]:[4,q("mask-image",t,r)];case 7:e=n.sent(),n.label=8;case 8:return e?[3,10]:[4,q("-webkit-mask-image",t,r)];case 9:n.sent(),n.label=10;case 10:return[2]}})})}function j(t,r){return e(this,void 0,void 0,function(){var e,i,o;return n(this,function(n){switch(n.label){case 0:return(e=p(t,HTMLImageElement))&&!E(t.src)||p(t,SVGImageElement)&&!E(t.href.baseVal)?[4,R(i=e?t.src:t.href.baseVal,S(i),r)]:[2];case 1:return o=n.sent(),[4,new Promise(function(n,i){t.onload=n,t.onerror=r.onImageErrorHandler?function(){for(var t=[],e=0;e<arguments.length;e++)t[e]=arguments[e];try{n(r.onImageErrorHandler.apply(r,t))}catch(t){i(t)}}:i;var u=t;u.decode&&(u.decode=n),"lazy"===u.loading&&(u.loading="eager"),e?(t.srcset="",t.src=o):t.href.baseVal=o})];case 2:return n.sent(),[2]}})})}function O(t,r){return e(this,void 0,void 0,function(){var e,i;return n(this,function(n){switch(n.label){case 0:return e=o(t.childNodes),i=e.map(function(t){return B(t,r)}),[4,Promise.all(i).then(function(){return t})];case 1:return n.sent(),[2]}})})}function B(t,r){return e(this,void 0,void 0,function(){return n(this,function(e){switch(e.label){case 0:return p(t,Element)?[4,U(t,r)]:[3,4];case 1:return e.sent(),[4,j(t,r)];case 2:return e.sent(),[4,O(t,r)];case 3:e.sent(),e.label=4;case 4:return[2]}})})}var z={};function W(t){return e(this,void 0,void 0,function(){var e,r;return n(this,function(n){switch(n.label){case 0:return null!=(e=z[t])?[2,e]:[4,fetch(t)];case 1:return[4,n.sent().text()];case 2:return r=n.sent(),e={url:t,cssText:r},z[t]=e,[2,e]}})})}function $(t,r){return e(this,void 0,void 0,function(){var i,o,u,c,a=this;return n(this,function(s){return i=t.cssText,o=/url\(["']?([^"')]+)["']?\)/g,u=i.match(/url\([^)]+\)/g)||[],c=u.map(function(u){return e(a,void 0,void 0,function(){var e;return n(this,function(n){return(e=u.replace(o,"$1")).startsWith("https://")||(e=new URL(e,t.url).href),[2,C(e,r.fetchRequestInit,function(t){var e=t.result;return i=i.replace(u,"url(".concat(e,")")),[u,e]})]})})}),[2,Promise.all(c).then(function(){return i})]})})}function G(t){if(null==t)return[];for(var e=[],n=t.replace(/(\/\*[\s\S]*?\*\/)/gi,""),r=new RegExp("((@.*?keyframes [\\s\\S]*?){([\\s\\S]*?}\\s*?)})","gi");null!==(u=r.exec(n));)e.push(u[0]);n=n.replace(r,"");for(var i=/@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi,o=new RegExp("((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})","gi");;){var u;if(null===(u=i.exec(n))){if(null===(u=o.exec(n)))break;i.lastIndex=o.lastIndex}else o.lastIndex=i.lastIndex;e.push(u[0])}return e}function _(t,r){return e(this,void 0,void 0,function(){var e,i;return n(this,function(n){return e=[],i=[],t.forEach(function(e){if("cssRules"in e)try{o(e.cssRules||[]).forEach(function(t,n){if(t.type===CSSRule.IMPORT_RULE){var o=n+1,u=W(t.href).then(function(t){return $(t,r)}).then(function(t){return G(t).forEach(function(t){try{e.insertRule(t,t.startsWith("@import")?o+=1:e.cssRules.length)}catch(e){console.error("Error inserting rule from remote css",{rule:t,error:e})}})}).catch(function(t){console.error("Error loading remote css",t.toString())});i.push(u)}})}catch(o){var n=t.find(function(t){return null==t.href})||document.styleSheets[0];null!=e.href&&i.push(W(e.href).then(function(t){return $(t,r)}).then(function(t){return G(t).forEach(function(t){n.insertRule(t,n.cssRules.length)})}).catch(function(t){console.error("Error loading remote stylesheet",t)})),console.error("Error inlining remote css file",o)}}),[2,Promise.all(i).then(function(){return t.forEach(function(t){if("cssRules"in t)try{o(t.cssRules||[]).forEach(function(t){e.push(t)})}catch(e){console.error("Error while reading CSS rules from ".concat(t.href),e)}}),e})]})})}function J(t){return t.filter(function(t){return t.type===CSSRule.FONT_FACE_RULE}).filter(function(t){return F(t.style.getPropertyValue("src"))})}function Q(t,r){return e(this,void 0,void 0,function(){return n(this,function(e){switch(e.label){case 0:if(null==t.ownerDocument)throw new Error("Provided element is not within a Document");return[4,_(o(t.ownerDocument.styleSheets),r)];case 1:return[2,J(e.sent())]}})})}function X(t){return t.trim().replace(/["']/g,"")}function K(t,r){return e(this,void 0,void 0,function(){var e,i;return n(this,function(n){switch(n.label){case 0:return[4,Q(t,r)];case 1:return e=n.sent(),i=function(t){var e=new Set;return function t(n){(n.style.fontFamily||getComputedStyle(n).fontFamily).split(",").forEach(function(t){e.add(X(t))}),Array.from(n.children).forEach(function(e){e instanceof HTMLElement&&t(e)})}(t),e}(t),[4,Promise.all(e.filter(function(t){return i.has(X(t.style.fontFamily))}).map(function(t){var e=t.parentStyleSheet?t.parentStyleSheet.href:null;return V(t.cssText,e,r)}))];case 2:return[2,n.sent().join("\n")]}})})}function Y(t,r){return e(this,void 0,void 0,function(){var e,i,o,u,c;return n(this,function(n){switch(n.label){case 0:return null==r.fontEmbedCSS?[3,1]:(i=r.fontEmbedCSS,[3,5]);case 1:return r.skipFonts?(o=null,[3,4]):[3,2];case 2:return[4,K(t,r)];case 3:o=n.sent(),n.label=4;case 4:i=o,n.label=5;case 5:return(e=i)&&(u=document.createElement("style"),c=document.createTextNode(e),u.appendChild(c),t.firstChild?t.insertBefore(u,t.firstChild):t.appendChild(u)),[2]}})})}function Z(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,function(){var e,i,o,u;return n(this,function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,N(t,r,!0)];case 1:return[4,Y(u=n.sent(),r)];case 2:return n.sent(),[4,B(u,r)];case 3:return n.sent(),function(t,e){var n=t.style;e.backgroundColor&&(n.backgroundColor=e.backgroundColor),e.width&&(n.width="".concat(e.width,"px")),e.height&&(n.height="".concat(e.height,"px"));var r=e.style;null!=r&&Object.keys(r).forEach(function(t){n[t]=r[t]})}(u,r),[4,v(u,i,o)];case 4:return[2,n.sent()]}})})}function tt(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,function(){var e,i,o,u,c,a,f,d,v;return n(this,function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,Z(t,r)];case 1:return[4,h(n.sent())];case 2:return u=n.sent(),c=document.createElement("canvas"),a=c.getContext("2d"),f=r.pixelRatio||function(){var t,e;try{e=process}catch(t){}var n=e&&e.env?e.env.devicePixelRatio:null;return n&&(t=parseInt(n,10),Number.isNaN(t)&&(t=1)),t||window.devicePixelRatio||1}(),d=r.canvasWidth||i,v=r.canvasHeight||o,c.width=d*f,c.height=v*f,r.skipAutoScale||function(t){(t.width>l||t.height>l)&&(t.width>l&&t.height>l?t.width>t.height?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l):t.width>l?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l))}(c),c.style.width="".concat(d),c.style.height="".concat(v),r.backgroundColor&&(a.fillStyle=r.backgroundColor,a.fillRect(0,0,c.width,c.height)),a.drawImage(u,0,0,c.width,c.height),[2,c]}})})}t.getFontEmbedCSS=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,function(){return n(this,function(e){return[2,K(t,r)]})})},t.toBlob=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,function(){return n(this,function(e){switch(e.label){case 0:return[4,tt(t,r)];case 1:return[4,f(e.sent())];case 2:return[2,e.sent()]}})})},t.toCanvas=tt,t.toJpeg=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,function(){return n(this,function(e){switch(e.label){case 0:return[4,tt(t,r)];case 1:return[2,e.sent().toDataURL("image/jpeg",r.quality||1)]}})})},t.toPixelData=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,function(){var e,i,o;return n(this,function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,tt(t,r)];case 1:return[2,n.sent().getContext("2d").getImageData(0,0,i,o).data]}})})},t.toPng=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,function(){return n(this,function(e){switch(e.label){case 0:return[4,tt(t,r)];case 1:return[2,e.sent().toDataURL()]}})})},t.toSvg=Z});
+</script>
 <script>
-/* ===================== 상수 ===================== */
-const uid = () => Math.random().toString(36).slice(2, 9);
-/* 유튜브 기본 프로필 배경색 팔레트 */
-const YT_COLORS = ['#F44336','#E91E63','#9C27B0','#673AB7','#3F51B5','#2196F3','#03A9F4','#00BCD4',
-                   '#009688','#4CAF50','#8BC34A','#FFC107','#FF9800','#FF5722','#795548','#607D8B'];
-const RATIOS = { '16:9':[1280,720], '16:10':[1280,800], '4:3':[1280,960], '9:16':[720,1280], 'auto':[1280,null] };
-const PHONE = [440, 956]; /* iPhone 16 Pro Max */
+/* ============================================================
+   1. DEVICES  — logical points, iPhone 5c → 17 Pro Max
+   ============================================================ */
+const DEVICES = {
+  "5c"        : {label:"iPhone 5c / 5s / SE(1세대)", w:320, h:568, top:"classic", sr:3,  bez:[92,16,104],  br:50},
+  "6"         : {label:"iPhone 6 / 7 / 8 / SE(2·3세대)", w:375, h:667, top:"classic", sr:4, bez:[98,18,112], br:56},
+  "6plus"     : {label:"iPhone 6+ / 7+ / 8 Plus", w:414, h:736, top:"classic", sr:4, bez:[104,20,118], br:60},
+  "x"         : {label:"iPhone X / XS / 11 Pro", w:375, h:812, top:"notch", sr:40, bez:[12,12,12], br:52},
+  "xr"        : {label:"iPhone XR / 11", w:414, h:896, top:"notch", sr:40, bez:[13,13,13], br:53},
+  "xsmax"     : {label:"iPhone XS Max / 11 Pro Max", w:414, h:896, top:"notch", sr:40, bez:[12,12,12], br:52},
+  "12mini"    : {label:"iPhone 12 mini / 13 mini", w:375, h:812, top:"notch", sr:44, bez:[11,11,11], br:55},
+  "12"        : {label:"iPhone 12 / 12 Pro / 13 / 13 Pro / 14", w:390, h:844, top:"notch", sr:47, bez:[11,11,11], br:58},
+  "12promax"  : {label:"iPhone 12 Pro Max / 13 Pro Max / 14 Plus", w:428, h:926, top:"notch", sr:50, bez:[11,11,11], br:61},
+  "14pro"     : {label:"iPhone 14 Pro / 15 / 15 Pro / 16", w:393, h:852, top:"island", sr:55, bez:[11,11,11], br:66},
+  "14promax"  : {label:"iPhone 14 Pro Max / 15 Plus / 15 Pro Max / 16 Plus", w:430, h:932, top:"island", sr:55, bez:[11,11,11], br:66},
+  "16pro"     : {label:"iPhone 16 Pro / 17 / 17 Pro", w:402, h:874, top:"island", sr:62, bez:[10,10,10], br:72},
+  "16promax"  : {label:"iPhone 16 Pro Max / 17 Pro Max", w:440, h:956, top:"island", sr:62, bez:[10,10,10], br:72},
+  "air"       : {label:"iPhone Air", w:420, h:912, top:"island", sr:62, bez:[9,9,9], br:71}
+};
+const FRAME_COLORS = {
+  "black"  : {label:"블랙 티타늄", body:"#26262a", btn:"#3a3a3e"},
+  "natural": {label:"내추럴 티타늄", body:"#8d8b85", btn:"#a3a09a"},
+  "silver" : {label:"실버", body:"#d5d6d8", btn:"#bfc0c2"},
+  "gold"   : {label:"골드", body:"#c9a97e", btn:"#b3946c"},
+  "white"  : {label:"화이트", body:"#f2f2f4", btn:"#dcdcde"}
+};
 
-/* ===================== 기본 상태 ===================== */
-function defaultState(){
+/* ============================================================
+   2. COLOR HELPERS
+   ============================================================ */
+function hex2rgb(h){h=h.replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function rgb2hex(r,g,b){return "#"+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")).join("");}
+function luminance(hex){const[r,g,b]=hex2rgb(hex).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);});return .2126*r+.7152*g+.0722*b;}
+function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0;const l=(mx+mn)/2;const d=mx-mn;if(d){s=l>.5?d/(2-mx-mn):d/(mx+mn);if(mx===r)h=((g-b)/d+(g<b?6:0));else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;}return[h,s*100,l*100];}
+function hsl2hex(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12;const a=s*Math.min(l,1-l);const f=n=>l-a*Math.max(-1,Math.min(Math.min(k(n)-3,9-k(n)),1));return rgb2hex(f(0)*255,f(8)*255,f(4)*255);}
+/* Apple Music's adaptive tint: keep the hue, push lightness to the far side */
+function adaptiveTint(baseHex,light){
+  const[h,s]=rgb2hsl(...hex2rgb(baseHex));
+  if(s < 12) return light ? "rgba(255,255,255,.60)" : "#8E8E93";   /* neutral ground: plain iOS grey */
+  const sat=Math.max(22,Math.min(70,s));
+  return light?hsl2hex(h,sat,80):hsl2hex(h,Math.max(34,sat),34);
+}
+function deepTint(baseHex,accent){
+  const[h,s]=rgb2hsl(...hex2rgb(baseHex));
+  if(s < 12) return accent;
+  return hsl2hex(h,Math.max(38,Math.min(72,s)),26);
+}
+
+/* ============================================================
+   3. ICONS  (SF Symbols approximations, inline SVG)
+   ============================================================ */
+const I = {
+  signal:(lv,c)=>{let b="";for(let i=0;i<4;i++){const hgt=4+i*2.1,on=i<lv;b+=`<rect x="${i*4.6}" y="${11-hgt}" width="3.2" height="${hgt}" rx="1" fill="${c}" opacity="${on?1:.32}"/>`;}return `<svg width="18" height="11" viewBox="0 0 18 11">${b}</svg>`;},
+  wifi:c=>`<svg width="16" height="11.5" viewBox="0 0 16 12" fill="${c}"><path d="M8 11.2 6.05 8.86a2.9 2.9 0 0 1 3.9 0L8 11.2Z"/><path d="M11.2 7.34a4.9 4.9 0 0 0-6.4 0L3.5 5.9a6.9 6.9 0 0 1 9 0l-1.3 1.44Z"/><path d="M14.1 4.06a9 9 0 0 0-12.2 0L.6 2.6a11 11 0 0 1 14.8 0l-1.3 1.46Z"/></svg>`,
+  battery:(pct,c,chg)=>{const w=Math.max(1.5,22*(pct/100));const fill=chg?"#34C759":(pct<=20?"#FF3B30":c);
+    return `<svg width="27.5" height="13" viewBox="0 0 27.5 13"><rect x=".5" y=".5" width="24" height="12" rx="4" fill="none" stroke="${c}" stroke-opacity=".38"/><rect x="2" y="2" width="${w}" height="9" rx="2.5" fill="${fill}"/><path d="M25.8 4.3c1 .35 1.6 1.05 1.6 2.2s-.6 1.85-1.6 2.2V4.3Z" fill="${c}" fill-opacity=".45"/>${chg?`<path d="M14.6 2.3 9.9 7.35h2.9L11.9 10.7l4.7-5.05h-2.9l.9-3.35Z" fill="#fff" stroke="#0006" stroke-width=".4"/>`:""}</svg>`;},
+  bellSlash:c=>`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="${c}" stroke-width="1.35" stroke-linecap="round"><path d="M4.4 5.6a3.6 3.6 0 0 1 6.7-1.4M11.6 7v1.9c0 .9.3 1.7.9 2.4H5.1M4.4 8.9V7.4"/><path d="M6.4 13.1a1.7 1.7 0 0 0 3.2 0"/><path d="M2.2 2.2 13.8 13.8"/></svg>`,
+  chevL:c=>`<svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2.5 10 10 18"/></svg>`,
+  personAdd:c=>`<svg width="22" height="19" viewBox="0 0 24 20" fill="${c}"><circle cx="9" cy="5.4" r="4.1"/><path d="M9 10.8c-4.1 0-7.4 2.4-7.4 4.9 0 1.2 1 1.7 2.3 1.7h10.2c1.3 0 2.3-.5 2.3-1.7 0-2.5-3.3-4.9-7.4-4.9Z"/><path d="M19.6 4.5c.5 0 .85.35.85.85V7.2h1.9c.5 0 .85.35.85.85s-.35.85-.85.85h-1.9v1.85c0 .5-.35.85-.85.85s-.85-.35-.85-.85V8.9h-1.9c-.5 0-.85-.35-.85-.85s.35-.85.85-.85h1.9V5.35c0-.5.35-.85.85-.85Z"/></svg>`,
+  share:c=>`<svg width="17" height="21" viewBox="0 0 18 22" fill="${c}"><path d="M9 .8c.28 0 .53.11.75.33l3.3 3.2c.2.2.3.44.3.72 0 .55-.4.95-.95.95a.98.98 0 0 1-.7-.29L9.95 4.2l-.05 8.6c0 .55-.38.95-.9.95s-.9-.4-.9-.95l.05-8.6L6.4 5.71a.98.98 0 0 1-.7.29c-.55 0-.95-.4-.95-.95 0-.28.1-.52.3-.72l3.2-3.2c.22-.22.47-.33.75-.33Z"/><path d="M3.3 21.2h11.4c2.2 0 3.3-1.1 3.3-3.26V10.1c0-2.16-1.1-3.26-3.3-3.26h-2.9v1.85h2.85c.9 0 1.5.55 1.5 1.5v7.7c0 .95-.6 1.5-1.5 1.5H3.35c-.92 0-1.5-.55-1.5-1.5v-7.7c0-.95.58-1.5 1.5-1.5H6.2V6.84H3.3C1.1 6.84 0 7.94 0 10.1v7.84c0 2.16 1.1 3.26 3.3 3.26Z"/></svg>`,
+  dots:(c,s=22)=>`<svg width="${s}" height="${s/3.6}" viewBox="0 0 22 6" fill="${c}"><circle cx="3" cy="3" r="2.5"/><circle cx="11" cy="3" r="2.5"/><circle cx="19" cy="3" r="2.5"/></svg>`,
+  shuffle:c=>`<svg width="24" height="20" viewBox="0 0 24 20" fill="none" stroke="${c}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h3.4c1.6 0 2.6.7 3.6 2l5 7c1 1.3 2 2 3.6 2H21"/><path d="M2 16h3.4c1.6 0 2.6-.7 3.6-2l.9-1.2M14.1 7.2l.9-1.2c1-1.3 2-2 3.6-2H21"/><path d="m18.4 1.5 3 2.5-3 2.5M18.4 13.5l3 2.5-3 2.5"/></svg>`,
+  play:(c,s=17)=>`<svg width="${s}" height="${s*1.12}" viewBox="0 0 16 18" fill="${c}"><path d="M14.6 8.13a1 1 0 0 1 0 1.74L2.5 17.2A1 1 0 0 1 1 16.33V1.67A1 1 0 0 1 2.5.8l12.1 7.33Z"/></svg>`,
+  pause:(c,s=16)=>`<svg width="${s}" height="${s*1.12}" viewBox="0 0 16 18" fill="${c}"><rect x="2" y="1" width="4.4" height="16" rx="1.5"/><rect x="9.6" y="1" width="4.4" height="16" rx="1.5"/></svg>`,
+  forward:(c,s=24)=>`<svg width="${s}" height="${s*.72}" viewBox="0 0 25 18" fill="${c}"><path d="M11.6 8.13a1 1 0 0 1 0 1.74L2.5 17.2A1 1 0 0 1 1 16.33V1.67A1 1 0 0 1 2.5.8l9.1 7.33Z"/><path d="M23.6 8.13a1 1 0 0 1 0 1.74L14.5 17.2a1 1 0 0 1-1.5-.87V1.67A1 1 0 0 1 14.5.8l9.1 7.33Z"/></svg>`,
+  download:c=>`<svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="${c}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5v13"/><path d="m5.6 10.4 5.4 5.4 5.4-5.4"/><path d="M2.8 19.5h16.4"/></svg>`,
+  star:c=>`<svg viewBox="0 0 16 16" fill="${c}"><path d="M8 .9l2.06 4.44 4.86.6-3.6 3.3.96 4.8L8 11.62 3.72 14.04l.96-4.8-3.6-3.3 4.86-.6L8 .9Z"/></svg>`,
+  note:c=>`<svg viewBox="0 0 24 24" fill="${c}"><path d="M20 3.2v12.1a3.35 3.35 0 1 1-1.95-3.05V7.1L9.9 8.72v9.2a3.35 3.35 0 1 1-1.95-3.05V6.1L20 3.2Z"/></svg>`,
+  house:c=>`<svg width="24" height="22" viewBox="0 0 24 22" fill="${c}"><path d="M11.05 1.2a1.5 1.5 0 0 1 1.9 0l9.3 7.6c.5.4.2 1.2-.45 1.2H20.3v8.4c0 1.7-.9 2.6-2.6 2.6h-3.1v-6.2c0-.7-.45-1.15-1.15-1.15h-2.9c-.7 0-1.15.45-1.15 1.15V21h-3.1c-1.7 0-2.6-.9-2.6-2.6V10H2.2c-.65 0-.95-.8-.45-1.2l9.3-7.6Z"/></svg>`,
+  grid:c=>`<svg width="22" height="22" viewBox="0 0 22 22" fill="${c}"><rect x="0" y="0" width="9.6" height="9.6" rx="2.6"/><rect x="12.4" y="0" width="9.6" height="9.6" rx="2.6"/><rect x="0" y="12.4" width="9.6" height="9.6" rx="2.6"/><rect x="12.4" y="12.4" width="9.6" height="9.6" rx="2.6"/></svg>`,
+  radio:c=>`<svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="${c}" stroke-width="1.9" stroke-linecap="round"><circle cx="13" cy="10" r="2.1" fill="${c}" stroke="none"/><path d="M8.9 6.2a5.4 5.4 0 0 0 0 7.6M17.1 6.2a5.4 5.4 0 0 1 0 7.6"/><path d="M5.4 2.9a10.1 10.1 0 0 0 0 14.2M20.6 2.9a10.1 10.1 0 0 1 0 14.2"/></svg>`,
+  /* Apple Music's Library glyph, traced from the shipping icon: a square case
+     (43x43, 18.6 % corner) with the note knocked out, and two records stacked behind */
+  library:c=>`<svg width="20" height="26" viewBox="0 0 22 28.7" fill="${c}">`
+    + `<rect x="5.63" y="0" width="11.26" height="1.8" rx=".9"/>`
+    + `<rect x="3.07" y="3.07" width="15.86" height="2.05" rx="1.02"/>`
+    + `<path fill-rule="evenodd" d="M4.1 6.65H17.9A4.1 4.1 0 0 1 22 10.75V24.55A4.1 4.1 0 0 1 17.9 28.65H4.1A4.1 4.1 0 0 1 0 24.55V10.75A4.1 4.1 0 0 1 4.1 6.65Z`
+    + ` M15.936 11.075v8.758a2.167 2.425 0 1 1-1.261-2.208V13.898L9.403 15.07v6.659a2.167 2.425 0 1 1-1.261-2.208V13.174L15.936 11.075Z"/>`
+    + `</svg>`,
+  search:c=>`<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.3" stroke-linecap="round"><circle cx="10.3" cy="10.3" r="7.5"/><path d="m16 16 5.4 5.4"/></svg>`,
+  plus:c=>`<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"><path d="M7 1.5v11M1.5 7h11"/></svg>`,
+  up:c=>`<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="${c}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 7 4.5l4 4"/></svg>`,
+  down:c=>`<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="${c}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5 7 9.5l4-4"/></svg>`,
+  trash:c=>`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 3.6h9.6M5.4 3.6V2.4h3.2v1.2M3.4 3.6l.5 7.6c.04.6.4.9 1 .9h4.2c.6 0 .96-.3 1-.9l.5-7.6"/></svg>`
+};
+
+/* ============================================================
+   4. STATE
+   ============================================================ */
+let SID = 0;
+const newTrack = (t="",a="")=>({id:++SID,title:t,artist:a,star:false,color:"#D1D1D6",img:null,yt:""});
+
+const state = {
+  device:"16pro", frameOn:true, frameColor:"black", roundScreen:false,
+  bg:{mode:"solid", c1:"#FFFFFF", c2:"#E8E8ED", angle:180},
+  theme:"auto",
+  tintMode:"auto", tint:"#5FBFA9",
+  status:{show:true, time:"9:41", battery:100, charging:false, silent:false, signal:4, wifi:true},
+  nav:{show:true, back:true, person:true, share:true, more:true},
+  pl:{title:"냉정과 열정 사이", artist:"서이현", color:"#D1D1D6", img:null, size:70, radius:10},
+  act:{show:true, shuffle:true, download:true, label:"재생", pillMode:"auto", pillBg:"#FFFFFF"},
+  list:{stars:true, more:true, art:true},
+  tracks:[
+    Object.assign(newTrack("Love so Sweet","ARASHI")),
+    Object.assign(newTrack("おつかれSUMMER","HALCALI"),{star:true}),
+    Object.assign(newTrack("Long Kiss Good Bye","HALCALI")),
+    Object.assign(newTrack("친애하는 소년이여","Hump Back"),{star:true})
+  ],
+  mini:{show:true, title:"Kirari", artist:"Fujii Kaze", color:"#D1D1D6", img:null, playing:false},
+  tab:{show:true, active:"library", search:true, accent:"#FA243C"},
+  homeInd:true,
+  shadows:false,
+  exportFlat:"auto",
+  canvas:{on:false, mode:"solid", c1:"#EDE7F4", c2:"#CFC3E4", angle:160,
+          img:null, imgAR:1, fit:"cover", zoom:100, px:50, py:50, devScale:100,
+          dim:0, pad:60, ratio:"auto", cw:1080, ch:1350, radius:28,
+          shadow:45, tilt:0}
+};
+
+/* palette derived from current settings */
+function palette(){
+  const base = state.bg.c1;
+  const light = state.theme==="auto" ? luminance(base) < 0.55 : state.theme==="light";
+  const tint = state.tintMode==="auto" ? adaptiveTint(base, light) : state.tint;
   return {
-    device:'pc', theme:'light', layout:'comments', sideRecs:true, ratio:'16:9',
-    ytHeader:true, browser:true, macbar:true, bookmarks:true, mockup:'none',
-    ui:{
-      search:'앰버라인 다섯 사람의 밤',
-      count:'댓글 128개', sort:'정렬 기준',
-      time:'2:14', battery:78,
-      url:'youtu.be/Engy-C6FHOs?si=pRHb_PxOfwaBqK74',
-      macApp:'Chrome',
-      macMenus:'파일, 수정, 보기, 방문 기록, 북마크, 프로필, 탭, 창, 도움말',
-      macTime:'9월 2일 (수) 오후 2:14',
-      macWifi:true,
-      tabs:[{id:uid(), title:'다섯 사람의 밤 - YouTube', color:'#FF0000'}],
-      active:0,
-      bmk:[{id:uid(),t:'YouTube',c:'#FF0000'},{id:uid(),t:'Gmail',c:'#EA4335'},
-           {id:uid(),t:'지도',c:'#34A853'},{id:uid(),t:'뉴스',c:'#4285F4'},{id:uid(),t:'번역',c:'#00BCD4'}]
-    },
-    video:{
-      thumb:'', title:'다섯 사람의 밤 | 이현 · 스텔라 · 겐조 · 류 · 루시아',
-      channel:'앰버라인', handle:'@amberline', avatar:'', color:'#FF9800',
-      subs:'구독자 12.4만명', likes:'3.1천', views:'조회수 42만회', when:'3일 전',
-      dur:'18:24', cur:'6:12', playerUI:'controls', playing:true,
-      subscribed:false, hashtag:'#앰버라인'
-    },
-    comments:[
-      { id:uid(), name:'@amberline', time:'3일 전', likes:'42', pinned:true, owner:true, more:true,
-        avatar:'', color:'#FF9800',
-        text:'이번 화 스포는 여기 대댓으로 부탁드려요~ 🌙\n\n📌 인물 관계 정리\n서이현 ⇄ 정스텔라\n카지야마 겐조 · 카지야마 류 · 정루시아…',
-        replies:[
-          { id:uid(), name:'@별밤지기', time:'20시간 전', likes:'214', color:'#673AB7',
-            text:'이현이가 스텔라 이름 부를 때만 목소리 톤이 반음 내려가는 거… 저만 들었나요?',
-            replies:[
-              { id:uid(), name:'@lucia_0409', time:'11시간 전', likes:'38', color:'#E91E63',
-                text:'저도요ㅠㅠ 12분 42초 그 장면만 백 번 돌려봤어요',
-                replies:[
-                  { id:uid(), name:'@별밤지기', time:'9시간 전', likes:'9', color:'#673AB7',
-                    text:'우리 같이 정신 차립시다…', replies:[] }
-                ]}
-            ]},
-          { id:uid(), name:'@kajiyama_3', time:'17시간 전', likes:'96', color:'#009688',
-            text:'겐조 류 루시아 셋이 한 프레임에 있을 때 공기 밀도가 다름ㅋㅋㅋ 부자지간인데 어색하지가 않은 게 더 신기해',
-            replies:[
-              { id:uid(), name:'@midnight_walk', time:'12시간 전', likes:'12', color:'#3F51B5',
-                text:'루시아가 가운데 서는 구도 진짜 잘 짰어요', replies:[] }
-            ]}
-        ]},
-      { id:uid(), name:'@해질녘산책', time:'1일 전', likes:'1.2천', hearted:true, color:'#4CAF50',
-        text:'연애물인데 왜 자꾸 눈물이 나는지 모르겠어요. 다섯 사람이 각자 다른 속도로 사랑하는 게 너무 좋아요',
-        replies:[
-          { id:uid(), name:'@amberline', time:'1일 전', likes:'87', owner:true, color:'#FF9800',
-            text:'다음 화도 예쁘게 만들어볼게요 :)', replies:[] }
-        ]}
-    ],
-    recs:[
-      { id:uid(), thumb:'', title:'[비하인드] 겐조 · 류 · 루시아 촬영 현장 30분 몰아보기', ch:'앰버라인', meta:'8.7만  2주 전', dur:'31:02' },
-      { id:uid(), thumb:'', title:'Playlist | 새벽 세 시의 러브송 🌙 잔잔한 시티팝 모음', ch:'밤의 라디오', meta:'21만  1개월 전', dur:'1:12:40' },
-      { id:uid(), thumb:'', title:'이현 × 스텔라 명장면 모음 .zip', ch:'컷신 clip', meta:'55만  4일 전', dur:'14:37' },
-      { id:uid(), thumb:'', title:'[단편] 아버지와 아들, 그리고 그녀 — 3화 전편', ch:'앰버라인', meta:'19만  1주 전', dur:'24:15' },
-      { id:uid(), thumb:'', title:'연애물 쓸 때 자주 하는 실수 5가지', ch:'이야기공작소', meta:'3.2만  6일 전', dur:'9:48' }
-    ]
+    light,
+    ink:        light ? "#FFFFFF" : "#000000",
+    ink2:       light ? "rgba(255,255,255,.62)" : "rgba(0,0,0,.55)",
+    glass:      light ? "rgba(255,255,255,.17)" : "rgba(0,0,0,.06)",
+    glassLine:  light ? "rgba(255,255,255,.10)" : "rgba(0,0,0,.05)",
+    sep:        light ? "rgba(255,255,255,.22)" : "rgba(0,0,0,.13)",
+    barBg:      light ? "rgba(0,0,0,.42)" : "rgba(255,255,255,.82)",
+    homeInd:    light ? "rgba(255,255,255,.9)" : "rgba(0,0,0,.35)",
+    tint,
+    accent:     state.tab.accent,
+    pillBg:     state.act.pillMode==="auto" ? (light ? "#FFFFFF" : "rgba(120,120,128,.14)") : state.act.pillBg,
+    onPill:     state.act.pillMode==="auto"
+                  ? (light ? deepTint(base, state.tab.accent) : state.tab.accent)
+                  : (luminance(state.act.pillBg) > .55 ? deepTint(base, state.tab.accent) : "#FFFFFF"),
+    barShadow:  light ? "0 6px 24px rgba(0,0,0,.24)" : "0 6px 22px rgba(0,0,0,.13)",
+    barLine:    light ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.10)"
   };
 }
-let S = defaultState();
-S._scale = 3;
 
-/* ===================== 유틸 ===================== */
-const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function autoColor(name){ let h=0; const s=String(name||'?'); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return YT_COLORS[h%YT_COLORS.length]; }
-function initial(name){ return String(name||'?').replace(/^@/,'').slice(0,1).toUpperCase(); }
-
-/* ---- 이미지 위치/확대 ---- */
-function fxHost(key){
-  if(!key) return null;
-  try{
-    if(key==='video.thumb') return [S.video,'thumbFx'];
-    if(key==='video.avatar') return [S.video,'avatarFx'];
-    if(key.startsWith('rec:')) return [S.recs[Number(key.slice(4))],'thumbFx'];
-    if(key.startsWith('c:')) return [getNode(key.slice(2)),'avatarFx'];
-  }catch(e){}
-  return null;
+/* ============================================================
+   5. SCREEN RENDERER
+   ============================================================ */
+const viewport = document.getElementById("viewport");
+let lastBox = "";
+let rafId = null, rafCanvasId = null;
+/* one repaint per frame at most — colour pickers and sliders fire far faster than that */
+function requestRender(){
+  if(rafId) return;
+  rafId = requestAnimationFrame(()=>{ rafId = null; renderScreen(); });
 }
-function getFx(key){
-  const h = fxHost(key);
-  if(!h || !h[0]) return {};
-  return h[0][h[1]] || (h[0][h[1]] = {x:50,y:50,z:100,ar:1});
+function requestCanvas(){
+  if(rafCanvasId) return;
+  rafCanvasId = requestAnimationFrame(()=>{ rafCanvasId = null; applyCanvas(); });
 }
-function fxSize(fx, car){
-  const z = (fx && fx.z) || 100;
-  const ar = (fx && fx.ar) || car;
-  let w, h;
-  if(ar > car){ h = 100; w = (ar/car)*100; } else { w = 100; h = (car/ar)*100; }
-  return [w*z/100, h*z/100];
+/* dragging the cover sliders moves exactly one box: resize it, don't rebuild the phone */
+function fastCover(){
+  const c = document.querySelector("#screenEl .cover");
+  if(!c) return false;
+  c.style.width = screenMetrics().coverPx + "px";
+  c.style.borderRadius = state.pl.radius + "px";
+  return true;
 }
-function fxGeom(fx, car){
-  const [w,h] = fxSize(fx, car);
-  const x = (fx && fx.x!=null) ? fx.x : 50, y = (fx && fx.y!=null) ? fx.y : 50;
-  return { w, h, l:(1-w/100)*x, t:(1-h/100)*y };
-}
-/* 배경이미지 대신 진짜 <img>를 얹는다 — 저장할 때 원본 해상도가 그대로 살아남음 */
-function imgLayer(url, fx, car, key){
-  const g = fxGeom(fx, car);
-  return `<img class="fximg" data-fx="${esc(key||'')}" data-car="${car}" src="${url}" alt=""
-    style="left:${g.l.toFixed(3)}%;top:${g.t.toFixed(3)}%;width:${g.w.toFixed(3)}%;height:${g.h.toFixed(3)}%">`;
-}
-function patchFx(key){
-  const fx = getFx(key);
-  document.querySelectorAll(`#capture [data-fx="${key}"]`).forEach(el=>{
-    const g = fxGeom(fx, Number(el.dataset.car) || 1);
-    el.style.width = g.w.toFixed(3)+'%';
-    el.style.height = g.h.toFixed(3)+'%';
-    el.style.left = g.l.toFixed(3)+'%';
-    el.style.top = g.t.toFixed(3)+'%';
-  });
-}
-function avatarHTML(name, url, size, color, key){
-  const st = `width:${size}px;height:${size}px;font-size:${Math.round(size*0.44)}px;`;
-  if(url) return `<div class="avatar" style="${st}">${imgLayer(url, getFx(key), 1, key)}</div>`;
-  return `<div class="avatar" style="${st}background-color:${color||autoColor(name)}">${esc(initial(name))}</div>`;
-}
-function ph(seed){
-  let n=0; const s=String(seed||'');
-  for(let i=0;i<s.length;i++) n=(n*33+s.charCodeAt(i))>>>0;
-  const hue = n%360;
-  return `background-image:linear-gradient(135deg, hsl(${hue} 13% 34%), hsl(${(hue+45)%360} 15% 17%));`;
+/* typing only changes a string: patch that one text node instead of rebuilding the screen */
+function fastText(key, value){
+  const el = document.querySelector(`#screenEl [data-txt="${key}"]`);
+  if(!el) return false;
+  el.textContent = value;
+  return true;
 }
 
-/* ===================== 아이콘 ===================== */
-const I = {
-  menu:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 6H3V5h18v1zm0 5H3v1h18v-1zm0 6H3v1h18v-1z"/></svg>`,
-  search:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.87 20.17l-5.59-5.59C16.35 13.35 17 11.75 17 10c0-3.87-3.13-7-7-7s-7 3.13-7 7 3.13 7 7 7c1.75 0 3.35-.65 4.58-1.71l5.59 5.59.7-.71zM10 16c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>`,
-  mic:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm7 9a7 7 0 01-6 6.92V21h3v1H8v-1h3v-2.08A7 7 0 015 12h1a6 6 0 0012 0h1z"/></svg>`,
-  plus:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 11V5h-2v6H5v2h6v6h2v-6h6v-2h-6z"/></svg>`,
-  bell:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20h4a2 2 0 11-4 0zm8-4.5V10a6 6 0 10-12 0v5.5L4 18v1h16v-1l-2-2.5zM17 18H7l1-1.2V10a4 4 0 118 0v6.8L17 18z"/></svg>`,
-  kbd:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 7H4a1 1 0 00-1 1v8a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1zm0 9H4V8h16v8zM6 9h2v2H6V9zm3 0h2v2H9V9zm3 0h2v2h-2V9zm3 0h2v2h-2V9zM6 12h2v2H6v-2zm3 0h6v2H9v-2zm7 0h2v2h-2v-2z"/></svg>`,
-  close:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.7 12l6.6 6.6-.7.7-6.6-6.6-6.6 6.6-.7-.7 6.6-6.6L4.7 5.4l.7-.7 6.6 6.6 6.6-6.6.7.7L12.7 12z"/></svg>`,
-  up:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11h3v9H3zM6 11l4.5-8c1.4 0 2.2 1 2 2.4L12 10h5.7c1.4 0 2.4 1.3 2.1 2.6l-1.3 6A2 2 0 0116.6 20H6"/></svg>`,
-  down:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 13h-3V4h3zM18 13l-4.5 8c-1.4 0-2.2-1-2-2.4L12 14H6.3a2 2 0 01-2.1-2.6l1.3-6A2 2 0 017.4 4H18"/></svg>`,
-  share:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15 5l-1 1 4 4H3v1h15l-4 4 1 1 6-5.5L15 5z"/></svg>`,
-  sort:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v1H3V6zm3 5h12v1H6v-1zm3 5h6v1H9v-1z"/></svg>`,
-  dots:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>`,
-  pin:`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3l5 5-2.5 1.2-3 6.3 1.8 1.8-.7.7L12 13.4 5.5 20 4 21l1-1.5L11.6 13 7.6 9l.7-.7 1.8 1.8 6.3-3L16 3z"/></svg>`,
-  caret:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.4L5.6 9l.8-.8 5.6 5.6 5.6-5.6.8.8-6.4 6.4z"/></svg>`,
-  info:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.8"/></svg>`,
-  save:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 4H7a3 3 0 00-3 3v13l8-4 8 4V7a3 3 0 00-3-3z"/></svg>`,
-  cmt:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z"/></svg>`,
-  apple:`<svg width="13" height="16" viewBox="0 0 24 28" fill="currentColor"><path d="M16.7 14.9c0-2.7 2.2-4 2.3-4.1-1.3-1.9-3.3-2.1-4-2.1-1.7-.2-3.3 1-4.2 1s-2.2-1-3.6-1c-1.9 0-3.6 1.1-4.6 2.8-1.9 3.4-.5 8.4 1.4 11.2.9 1.3 2 2.8 3.5 2.8 1.4-.1 1.9-.9 3.6-.9s2.1.9 3.6.9c1.5 0 2.4-1.4 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.8-1.1-2.8-4.8zM14 6.3c.8-.9 1.3-2.2 1.1-3.5-1.1.1-2.5.8-3.3 1.7-.7.8-1.3 2.1-1.1 3.4 1.2.1 2.5-.6 3.3-1.6z"/></svg>`,
-  wifi:`<svg width="17" height="13" viewBox="0 0 17 13" fill="currentColor"><path d="M8.5 12.5l2.4-3a3.8 3.8 0 00-4.8 0l2.4 3zM13 6.8a7 7 0 00-9 0l1.3 1.6a5 5 0 016.4 0L13 6.8zM16 3.2a11.5 11.5 0 00-15 0l1.3 1.6a9.5 9.5 0 0112.4 0L16 3.2z"/></svg>`,
-  cell:`<svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"/></svg>`,
-  mute:`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 9h3l4-4v14l-4-4H4V9zm14.5-.5l-1 1L19 11l-1.5 1.5 1 1L20 12l1.5 1.5 1-1L21 11l1.5-1.5-1-1L20 10l-1.5-1.5z"/></svg>`,
-  navBack:`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11.5 5.5L5 12l6.5 6.5"/></svg>`,
-  navFwd:`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12.5 5.5L19 12l-6.5 6.5"/></svg>`,
-  navReload:`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.5A8.6 8.6 0 1 1 19 7.2"/><path d="M20.6 3.4v5.2h-5.2"/></svg>`,
-  navInfo:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 11.2v5.2M12 8.1v.9"/></svg>`,
-  navStar:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.6l2.6 5.5 5.9.8-4.3 4.2 1.05 6-5.25-2.9-5.25 2.9L7.8 14.1 3.5 9.9l5.9-.8z"/></svg>`,
-  plPlay:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg>`,
-  plPause:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/></svg>`,
-  plVol:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 9.2v5.6h3.7l4.6 4.4V4.8L7.2 9.2H3.5zm12.9 2.8a3.9 3.9 0 00-2.2-3.5v7a3.9 3.9 0 002.2-3.5zm-2.2-7.6v1.9a5.9 5.9 0 010 11.4v1.9a7.8 7.8 0 000-15.2z"/></svg>`,
-  plAuto:`<svg width="24" height="24" viewBox="0 0 24 24"><rect x="2.5" y="7.5" width="19" height="9" rx="4.5" fill="currentColor"/><circle cx="17" cy="12" r="3.1" fill="#111"/><path d="M15.6 10.6v2.8l2.4-1.4z" fill="currentColor"/></svg>`,
-  plCC:`<svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2.4" fill="currentColor"/><rect x="5.2" y="12.6" width="6" height="2.1" rx="1" fill="#101010"/><rect x="12.8" y="12.6" width="6" height="2.1" rx="1" fill="#101010"/><rect x="5.2" y="9.2" width="3.4" height="2.1" rx="1" fill="#101010"/><rect x="10" y="9.2" width="8.8" height="2.1" rx="1" fill="#101010"/></svg>`,
-  plGear:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zm7.3 3.4c0-.44-.04-.86-.1-1.28l1.8-1.4-1.75-3.03-2.12.86a7 7 0 00-2.22-1.29L14.6 3.5h-3.5l-.31 2.36a7 7 0 00-2.22 1.29l-2.12-.86L4.7 9.32l1.8 1.4a7.6 7.6 0 000 2.56l-1.8 1.4 1.75 3.03 2.12-.86a7 7 0 002.22 1.29l.31 2.36h3.5l.31-2.36a7 7 0 002.22-1.29l2.12.86 1.75-3.03-1.8-1.4c.06-.42.1-.84.1-1.28z"/></svg>`,
-  plMini:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 4H3a1.4 1.4 0 00-1.4 1.4v13.2A1.4 1.4 0 003 20h18a1.4 1.4 0 001.4-1.4V5.4A1.4 1.4 0 0021 4zm-.6 14H12v-5.4h8.4V18z"/></svg>`,
-  plFull:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 9.5V3.5h6v2h-4v4h-2zm11-6h6v6h-2v-4h-4v-2zm-11 11h2v4h4v2h-6v-6zm15 0h2v6h-6v-2h4v-4z"/></svg>`
-};
-/* ---- 재생 시간 ---- */
-function toSec(t){
-  const p = String(t||'').trim().split(':').map(n=>parseInt(n,10)||0);
-  if(p.length>=3) return p[0]*3600 + p[1]*60 + p[2];
-  if(p.length===2) return p[0]*60 + p[1];
-  return p[0]||0;
+function bgCss(){
+  const b = state.bg;
+  return b.mode==="gradient" ? `linear-gradient(${b.angle}deg, ${b.c1}, ${b.c2})` : b.c1;
 }
-function fmtSec(s){
-  s = Math.max(0, Math.round(s));
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), x = s%60;
-  const pad = n => String(n).padStart(2,'0');
-  return h ? `${h}:${pad(m)}:${pad(x)}` : `${m}:${pad(x)}`;
+function artStyle(o){
+  if(o.img) return `background-image:url('${o.img}');background-color:${o.color}`;
+  return `background-color:${o.color}`;
 }
-function playPct(){
-  const total = toSec(S.video.dur) || 1;
-  return Math.max(0, Math.min(100, toSec(S.video.cur)/total*100));
+function artInner(o,P){ return o.img ? "" : `<span class="ph">${I.note(P.light?"rgba(255,255,255,.62)":"rgba(0,0,0,.30)")}</span>`; }
+
+function outerRadius(){
+  const d = DEVICES[state.device];
+  return state.frameOn ? d.sr : (state.roundScreen ? d.sr : 0);
 }
-function playerOverlay(mobile){
-  const v = S.video, mode = v.playerUI || 'thumb';
-  if(mode==='thumb') return `<span class="dur">${esc(v.dur)}</span>`;
-  if(mode==='clean') return '';
-  const pct = playPct();
-  if(mobile){
-    return `<div class="pl-m"><div class="pl-mbtn">${v.playing?I.plPause:I.plPlay}</div>
-      <div class="pl-mtrack"><div class="pl-mplayed" style="width:${pct}%"></div><div class="pl-mdot" style="left:${pct}%"></div></div></div>`;
+function screenMetrics(){
+  const d = DEVICES[state.device];
+  const isClassic = d.top === "classic";
+  const sbH = d.top==="island" ? 59 : d.top==="notch" ? 48 : 22;
+  const bottomOffset = (state.homeInd && !isClassic) ? 26 : 12;
+  const bottomH = (state.mini.show?58:0) + (state.tab.show?62:0)
+                + ((state.mini.show && state.tab.show)?8:0) + bottomOffset;
+  const headroom = d.h - sbH - (state.nav.show?48:0) - 80 - (state.act.show?76:0) - bottomH - 76;
+  const coverPx = Math.max(72, Math.min(d.w * state.pl.size/100, headroom));
+  return {d, isClassic, sbH, bottomOffset, bottomH, coverPx};
+}
+function canvasGeom(){
+  const d = DEVICES[state.device], cv = state.canvas;
+  const bez = state.frameOn ? d.bez : [0,0,0];
+  const ds  = cv.on ? Math.max(0.2, (cv.devScale ?? 100)/100) : 1;
+  /* the canvas is sized from the device at FULL size — otherwise shrinking the
+     device shrinks the backdrop with it and nothing appears to change */
+  const fw  = d.w + bez[1]*2, fh = d.h + bez[0] + bez[2];
+  const rad = Math.abs(cv.tilt) * Math.PI/180;
+  const boxW = fw*Math.cos(rad) + fh*Math.sin(rad);
+  const boxH = fw*Math.sin(rad) + fh*Math.cos(rad);
+  const pad  = cv.on ? cv.pad : 26;
+  let cw = boxW + pad*2, ch = boxH + pad*2;
+  if(cv.on && cv.ratio === "custom"){
+    cw = Math.max(200, Math.min(4000, cv.cw||1080));
+    ch = Math.max(200, Math.min(4000, cv.ch||1350));
+  } else if(cv.on && cv.ratio !== "auto"){
+    const [rw,rh] = cv.ratio.split(":").map(Number), r = rw/rh;
+    if(cw/ch < r) cw = ch*r; else ch = cw/r;
   }
-  return `<div class="pl-ui">
-    <div class="pl-track"><div class="pl-buffer" style="width:${Math.min(100,pct+9)}%"></div>
-      <div class="pl-played" style="width:${pct}%"></div><div class="pl-dot" style="left:${pct}%"></div></div>
-    <div class="pl-row">
-      <span class="pl-btn">${v.playing?I.plPause:I.plPlay}</span>
-      <span class="pl-btn">${I.plVol}</span>
-      <span class="pl-time">${esc(v.cur)} / ${esc(v.dur)}</span>
-      <span class="pl-right">
-        <span class="pl-btn">${I.plAuto}</span>
-        <span class="pl-btn">${I.plCC}</span>
-        <span class="pl-btn pl-hd">${I.plGear}<i>HD</i></span>
-        <span class="pl-btn">${I.plMini}</span>
-        <span class="pl-btn">${I.plFull}</span>
-      </span>
-    </div></div>`;
+  return {cw:Math.round(cw), ch:Math.round(ch), ds};
 }
-function patchPlayer(){
-  const v = S.video, pct = playPct();
-  document.querySelectorAll('#capture .pl-played, #capture .pl-mplayed').forEach(el=>el.style.width = pct+'%');
-  document.querySelectorAll('#capture .pl-buffer').forEach(el=>el.style.width = Math.min(100,pct+9)+'%');
-  document.querySelectorAll('#capture .pl-dot, #capture .pl-mdot').forEach(el=>el.style.left = pct+'%');
-  document.querySelectorAll('#capture .pl-time').forEach(el=>el.textContent = v.cur+' / '+v.dur);
-}
-function syncPosSlider(){
-  const sl = rail.querySelector('[data-poss]');
-  if(sl) sl.value = Math.round(playPct()*10);
-}
-
-function ytLogo(dark){
-  return `<span class="yt-logo"><svg width="102" height="20" viewBox="0 0 102 20" style="overflow:visible">
-    <rect x="0" y="0" width="28" height="20" rx="6" fill="#FF0000"/>
-    <path d="M11 5.5l7 4.5-7 4.5z" fill="#fff"/>
-    <text x="32" y="16" font-family="Roboto, Arial, sans-serif" font-weight="700" font-size="17" letter-spacing="-1" fill="${dark?'#fff':'#282828'}">YouTube</text>
-  </svg><sup style="font-size:9px;color:${dark?'#aaa':'#606060'}">KR</sup></span>`;
-}
-
-/* ===================== 유튜브 렌더 ===================== */
-function commentHTML(c, depth, mobile, path){
-  const size = depth===0 ? (mobile?36:40) : 24;
-  const kids = (c.replies||[]).length;
-  let h = `<div class="cm"><div>${avatarHTML(c.name, c.avatar, size, c.color, 'c:'+path)}</div><div class="body">`;
-  if(c.pinned) h += `<div class="pinrow">${I.pin}<span>${esc(c.name)}님이 고정함</span></div>`;
-  h += `<div class="cm-top">`;
-  h += `<span class="cm-name ${c.owner?'owner':''}">${esc(c.name)}</span><span class="cm-time">${mobile?'· ':''}${esc(c.time)}</span></div>`;
-  h += `<div class="cm-text">${esc(c.text)}</div>`;
-  if(c.more) h += `<div class="cm-more">자세히 알아보기</div>`;
-  h += `<div class="cm-acts"><span class="lk">${I.up}<span>${esc(c.likes||'')}</span></span>
-        <span class="lk" style="margin-left:8px">${I.down}</span>`;
-  h += mobile ? `<span class="lk" style="margin-left:8px">${I.cmt}</span>` : `<span class="reply">답글</span>`;
-  if(c.hearted) h += `<span class="heart-wrap"><span class="ha" style="background-color:${S.video.color||autoColor(S.video.channel)}">${S.video.avatar?imgLayer(S.video.avatar, getFx('video.avatar'), 1, 'video.avatar'):''}</span><span class="hh">❤️</span></span>`;
-  h += `</div>`;
-  if(kids){
-    if(depth===0) h += `<div class="toggle-replies">${I.caret}<span>답글 ${kids}개</span></div>`;
-    h += `<div class="replies ${depth>0?'thread':''}">` + c.replies.map((r,j)=>commentHTML(r, depth+1, mobile, path+'.'+j)).join('') + `</div>`;
+function bgFillCss(cw,ch){
+  const cv = state.canvas;
+  if(cv.mode === "image" && cv.img){
+    let sizeCss, posCss = "center";
+    if(cv.fit === "custom"){
+      /* 100 % of the slider == exactly "cover" for this image in this box */
+      const ar = cv.imgAR || 1;
+      const coverPct = Math.max(100, 100 * (ch/cw) * ar);
+      sizeCss = (coverPct * cv.zoom / 100).toFixed(2) + "% auto";
+      posCss  = `${cv.px}% ${cv.py}%`;
+    } else {
+      sizeCss = cv.fit === "contain" ? "contain" : "cover";
+    }
+    return `background-image:url('${cv.img}');background-size:${sizeCss};background-position:${posCss};background-color:${cv.c1}`;
   }
-  return h + `</div></div>`;
+  if(cv.mode === "gradient") return `background:linear-gradient(${cv.angle}deg,${cv.c1},${cv.c2})`;
+  return `background:${cv.c1}`;
+}
+function devTransform(ds){
+  const cv = state.canvas;
+  const parts = [];
+  if(cv.on && ds !== 1) parts.push(`scale(${ds})`);
+  if(cv.on && cv.tilt)  parts.push(`rotate(${cv.tilt}deg)`);
+  return parts.length ? `transform:${parts.join(" ")};` : "";
+}
+function devShadowCss(){
+  const sh = state.shadows ? state.canvas.shadow : 0;
+  return sh<=0 ? "none"
+    : `0 ${Math.round(10+sh*0.42)}px ${Math.round(24+sh*0.85)}px rgba(0,0,0,${(0.06+sh*0.0035).toFixed(3)})`;
 }
 
-function commentsInner(compact){
-  return `<div class="cm-head" style="${compact?'margin:4px 0 16px':''}"><div class="cm-count">${esc(S.ui.count)}</div>
-      <div class="cm-sort">${I.sort}<span>${esc(S.ui.sort)}</span></div></div>
-    ${compact?'':`<div class="cm-add">${avatarHTML(S.video.handle, S.video.avatar, 40, S.video.color, 'video.avatar')}<div class="ln">댓글 추가...</div></div>`}
-    <div class="cm-list">${S.comments.map((c,i)=>commentHTML(c,0,false,String(i))).join('')}</div>`;
-}
-function recSide(){
-  return `<div class="yt-side scrollpane"><div class="spin" style="display:flex;flex-direction:column;gap:8px">` +
-    S.recs.map((r,i) => `<div class="rec">
-      <div class="th" style="${ph(r.title)}">${r.thumb?imgLayer(r.thumb, r.thumbFx, 168/94, 'rec:'+i):''}<span class="d">${esc(r.dur)}</span></div>
-      <div class="info"><div class="rt">${esc(r.title)}</div>
-        <div class="rc">${esc(r.ch)}</div><div class="rc" style="margin-top:0">▷ ${esc(r.meta)}</div></div>
-    </div>`).join('') + `</div></div>`;
-}
-function pcHeader(){
-  return `<div class="yt-head">
-    <div style="display:flex;align-items:center;gap:14px"><span style="color:var(--icon)">${I.menu}</span>${ytLogo(S.theme==='dark')}</div>
-    <div class="yt-search">
-      <div class="sbox"><span>${esc(S.ui.search)}</span>
-        <span style="margin-left:auto;display:flex;gap:12px;color:var(--tx2)">${I.kbd}${I.close}</span></div>
-      <div class="sbtn" style="color:var(--icon)">${I.search}</div>
-      <div class="micbtn" style="color:var(--icon)">${I.mic}</div>
-    </div>
-    <div class="yt-head-right">
-      <div class="create-btn" style="color:var(--tx)">${I.plus}<span>만들기</span></div>
-      <div class="bell" style="color:var(--icon)">${I.bell}<span class="badge">9+</span></div>
-      ${avatarHTML(S.video.handle, S.video.avatar, 32, S.video.color, 'video.avatar')}
-    </div></div>`;
-}
-function videoBlockPC(vw){
-  const v = S.video;
-  return `<div style="flex:none;${vw?`width:${Math.round(vw)}px;`:''}">
-    <div class="player" style="${ph(v.title)}">${v.thumb?imgLayer(v.thumb, v.thumbFx, 16/9, 'video.thumb'):''}${playerOverlay(false)}</div>
-    <h1 class="vtitle">${esc(v.title)}</h1>
-    <div class="vmeta">
-      <div class="vchan">${avatarHTML(v.channel, v.avatar, 40, v.color, 'video.avatar')}
-        <div><div class="nm">${esc(v.channel)}</div><div class="subs">${esc(v.subs)}</div></div>
-        <div class="subbtn ${v.subscribed?'on':''}">${v.subscribed?'구독중':'구독'}</div></div>
-      <div class="vactions">
-        <div class="pill">${I.up}<span>${esc(v.likes)}</span><span class="sep"></span>${I.down}</div>
-        <div class="pill">${I.share}<span>공유</span></div>
-        <div class="pill">${I.save}<span>저장</span></div>
-        <div class="pill" style="padding:0 10px">${I.dots}</div>
-      </div></div></div>`;
+/* Any redraw must leave the backdrop node in place — recreating it re-parses and
+   re-decodes the (often multi-MB) background image on every single frame. */
+function syncBackdrop(el){
+  const cv = state.canvas;
+  const {cw, ch} = canvasGeom();
+  let fill = el.querySelector(".bg-fill");
+  if(!cv.on){
+    if(fill) fill.remove();
+    const d0 = el.querySelector(".bg-dim"); if(d0) d0.remove();
+    return;
+  }
+  if(!fill){
+    fill = document.createElement("div");
+    fill.className = "bg-fill";
+    el.prepend(fill);
+    fill.dataset.rev = "";
+  }
+  {
+    if(cv.mode === "image" && cv.img){
+      if(fill.dataset.rev !== String(cv.imgRev||0)){
+        fill.style.background = "";
+        fill.style.backgroundImage = `url('${cv.img}')`;
+        fill.dataset.rev = String(cv.imgRev||0);
+      }
+      fill.style.backgroundColor = cv.c1;
+      if(cv.fit === "custom"){
+        const ar = cv.imgAR || 1;
+        const coverPct = Math.max(100, 100 * (ch/cw) * ar);
+        fill.style.backgroundSize = (coverPct * cv.zoom / 100).toFixed(2) + "% auto";
+        fill.style.backgroundPosition = `${cv.px}% ${cv.py}%`;
+      } else {
+        fill.style.backgroundSize = cv.fit === "contain" ? "contain" : "cover";
+        fill.style.backgroundPosition = "center";
+      }
+    } else {
+      fill.dataset.rev = "";
+      fill.setAttribute("style", bgFillCss(cw, ch));
+    }
+  }
+
+  let dim = el.querySelector(".bg-dim");
+  if(cv.dim > 0){
+    if(!dim){ dim = document.createElement("div"); dim.className = "bg-dim"; fill.after(dim); }
+    dim.style.background = `rgba(0,0,0,${(cv.dim/100).toFixed(2)})`;
+  } else if(dim) dim.remove();
 }
 
-function renderPC(){
-  const dark = S.theme==='dark';
-  const [W,H] = RATIOS[S.ratio] || RATIOS['16:9'];
-  const narrow = W < 900;
-  const wantSide = (S.layout==='recs' || S.sideRecs) && !narrow;
-  const descBox = `<div class="vdesc"><b>${esc(S.video.views)} ${esc(S.video.when)} ${esc(S.video.hashtag)}</b>
-    <div style="color:var(--blue);margin-top:2px">${esc(S.video.hashtag)}</div></div>`;
+function applyGeom(el){
+  const cv = state.canvas;
+  const {cw, ch, ds} = canvasGeom();
+  el.style.width = cw + "px";
+  el.style.height = ch + "px";
+  el.style.borderRadius = (cv.on ? cv.radius : 0) + "px";
+  el.classList.toggle("framed", cv.on);
+  const frame = el.querySelector(".frame");
+  if(frame){
+    frame.style.transform = devTransform(ds).replace(/^transform:|;$/g,"") || "";
+    frame.style.setProperty("--dev-shadow", devShadowCss());
+  }
+  const box = cw + "x" + ch;
+  if(box !== lastBox){ lastBox = box; fitIfAuto(); }
+  applyZoom();
+}
 
-  let body = '';
-  if(S.layout==='comments'){
-    body = `<div class="yt-main"><div class="scrollpane" style="flex:1;min-height:0"><div class="spin">${commentsInner()}</div></div></div>`
-         + (wantSide ? recSide() : '');
-  } else if(S.layout==='video'){
-    body = `<div class="yt-main"><div class="scrollpane" style="flex:1;min-height:0"><div class="spin">${videoBlockPC()}
-      ${descBox}${commentsInner()}</div></div></div>`
-         + (wantSide ? recSide() : '');
+/* backdrop-only changes: never touches the phone subtree */
+function applyCanvas(){
+  const el = document.getElementById("canvasEl");
+  if(!el){ renderScreen(); return; }
+  syncBackdrop(el);
+  applyGeom(el);
+}
+
+function renderScreen(){
+  const d = DEVICES[state.device];
+  const P = palette();
+  const isClassic = d.top==="classic";
+  const sbH = d.top==="island" ? 59 : d.top==="notch" ? 48 : 22;
+  const sbPad = d.top==="island" ? 20 : d.top==="notch" ? 15 : 0;
+  const sepLeft = state.list.stars ? 26 : 0;
+
+  /* how much room the floating bars claim, so the header can never end up underneath them */
+  const {bottomOffset, bottomH, coverPx} = screenMetrics();
+
+  /* -- status bar -- */
+  let statusHtml = "";
+  if(state.status.show){
+    statusHtml = `
+      <div class="statusbar" style="height:${sbH}px;padding-top:${sbPad}px;padding-left:${isClassic?8:30}px;padding-right:${isClassic?8:26}px">
+        <div class="sb-left">
+          <span class="sb-time" data-txt="status.time" style="font-size:${isClassic?12:17}px;color:${P.ink}">${esc(state.status.time)}</span>
+          ${state.status.silent?`<span style="display:flex">${I.bellSlash(P.ink)}</span>`:""}
+        </div>
+        <div class="sb-right">
+          ${state.status.signal>0?I.signal(state.status.signal,P.ink):""}
+          ${state.status.wifi?I.wifi(P.ink):""}
+          ${I.battery(state.status.battery,P.ink,state.status.charging)}
+        </div>
+      </div>`;
   } else {
-    const inlineRecs = narrow ? `<div style="display:flex;flex-direction:column;gap:14px;margin-top:20px">` +
-      S.recs.map(r=>`<div class="rec">
-        <div class="th" style="width:220px;height:124px;${ph(r.title)}">${r.thumb?imgLayer(r.thumb, r.thumbFx, 220/124, 'rec:'+S.recs.indexOf(r)):''}<span class="d">${esc(r.dur)}</span></div>
-        <div class="info"><div class="rt" style="font-size:15px">${esc(r.title)}</div>
-          <div class="rc">${esc(r.ch)}</div><div class="rc" style="margin-top:0">▷ ${esc(r.meta)}</div></div></div>`).join('') + `</div>` : '';
-    body = `<div class="yt-main"><div class="scrollpane" style="flex:1;min-height:0"><div class="spin">${videoBlockPC()}
-      ${descBox}${inlineRecs}</div></div></div>`
-         + (wantSide ? recSide() : '');
+    statusHtml = `<div class="statusbar" style="height:${sbH}px"></div>`;
   }
 
-  let page = `<div class="yt-page">${S.ytHeader?pcHeader():''}<div class="yt-body">${body}</div></div>`;
-  let chrome = '';
-  if(S.browser){
-    const u = S.ui;
-    chrome = `<div class="chrome ${dark?'dark':''}">
-      <div class="chrome-tabs">
-        <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
-        <div class="tabstrip">
-          ${u.tabs.map((t,i)=>`<div class="tab ${i===u.active?'active':''}">
-            <span class="fav" style="${t.img?`background-image:url('${t.img}')`:`background:${t.color}`}"></span>
-            <span class="tt">${esc(t.title)}</span><span class="xx">✕</span></div>`).join('')}
-          <div class="newtab">＋</div>
+  /* -- nav bar -- */
+  let navHtml = "";
+  if(state.nav.show){
+    const grp = [
+      state.nav.person?`<span class="gi">${I.personAdd(P.ink)}</span>`:"",
+      state.nav.share?`<span class="gi">${I.share(P.ink)}</span>`:"",
+      state.nav.more?`<span class="gi">${I.dots(P.ink,20)}</span>`:""
+    ].join("");
+    navHtml = `
+      <div class="navbar">
+        ${state.nav.back?`<span class="glass-btn" style="background:${P.glass}">${I.chevL(P.ink)}</span>`:""}
+        ${grp?`<div class="glass-group" style="background:${P.glass}">${grp}</div>`:""}
+      </div>`;
+  }
+
+  /* -- action row -- */
+  let actHtml = "";
+  if(state.act.show){
+    actHtml = `
+      <div class="action-row">
+        ${state.act.shuffle?`<span class="act-circle" style="background:${P.glass}">${I.shuffle(P.ink)}</span>`:""}
+        <div class="play-pill" style="background:${P.pillBg};color:${P.onPill};${state.shadows?`box-shadow:${P.barShadow}`:""}">
+          ${I.play(P.onPill,16)}<span data-txt="act.label">${esc(state.act.label)}</span>
+        </div>
+        ${state.act.download?`<span class="act-circle" style="background:${P.glass}">${I.download(P.ink)}</span>`:""}
+      </div>`;
+  }
+
+  /* -- tracks -- */
+  const tracksHtml = state.tracks.map((t,i)=>`
+    <div class="trk${i===0?" first":""}">
+      ${state.list.stars?`<span class="star">${t.star?I.star(P.tint):""}</span>`:""}
+      ${state.list.art?`<span class="tk-art" style="${artStyle(t)}">${artInner(t,P)}</span>`:""}
+      <span class="tk-meta">
+        <span class="tk-title" data-txt="t${i}.title" style="color:${P.ink}">${esc(t.title)}</span>
+        <span class="tk-artist" data-txt="t${i}.artist" style="color:${P.tint}">${esc(t.artist)}</span>
+      </span>
+      ${state.list.more?`<span class="tk-more">${I.dots(P.tint,20)}</span>`:""}
+    </div>`).join("");
+
+  /* -- bottom stack -- */
+  let miniHtml = "";
+  if(state.mini.show){
+    miniHtml = `
+      <div class="mini" style="background:${P.barBg};border:.5px solid ${P.barLine};${state.shadows?`box-shadow:${P.barShadow}`:""}">
+        <span class="mini-art" style="${artStyle(state.mini)}">${artInner(state.mini,P)}</span>
+        <span class="mini-meta">
+          <span class="mini-title" data-txt="mini.title" style="color:${P.ink}">${esc(state.mini.title)}</span>
+          <span class="mini-artist" data-txt="mini.artist" style="color:${P.ink2}">${esc(state.mini.artist)}</span>
+        </span>
+        <span class="mini-ctl">
+          ${state.mini.playing?I.pause(P.ink,15):I.play(P.ink,15)}
+          ${I.forward(P.ink,23)}
+        </span>
+      </div>`;
+  }
+
+  let tabHtml = "";
+  if(state.tab.show){
+    const TABS = [
+      {k:"home",  lb:"홈",        ic:I.house},
+      {k:"new",   lb:"새로운 음악", ic:I.grid},
+      {k:"radio", lb:"라디오",     ic:I.radio},
+      {k:"library",lb:"보관함",    ic:I.library}
+    ];
+    const items = TABS.map(t=>{
+      const on = state.tab.active===t.k;
+      const col = on ? state.tab.accent : P.tint;
+      return `<span class="tab" style="${on?`background:${P.glass}`:""}">
+        <span class="ic">${t.ic(col)}</span>
+        <span class="lb" style="color:${on?P.ink:P.tint}">${t.lb}</span>
+      </span>`;
+    }).join("");
+    tabHtml = `
+      <div class="tabrow">
+        <div class="tabbar" style="background:${P.barBg};border:.5px solid ${P.barLine};${state.shadows?`box-shadow:${P.barShadow}`:""}">${items}</div>
+        ${state.tab.search?`<div class="tab-search" style="background:${P.barBg};border:.5px solid ${P.barLine};${state.shadows?`box-shadow:${P.barShadow}`:""}">${I.search(P.tint)}</div>`:""}
+      </div>`;
+  }
+
+  const bottomHtml = (miniHtml||tabHtml)
+    ? `<div class="bottom" style="--bottom-offset:${bottomOffset}px">${miniHtml}${tabHtml}</div>` : "";
+
+  const homeHtml = (state.homeInd && !isClassic)
+    ? `<div class="home-ind" style="position:absolute;left:0;right:0;bottom:0;z-index:35"><i style="background:${P.homeInd}"></i></div>` : "";
+
+  /* -- hardware overlay -- */
+  let hw = "";
+  if(state.frameOn){
+    if(d.top==="notch") hw = `<div class="notch"></div>`;
+    else if(d.top==="island") hw = `<div class="island"></div>`;
+  }
+
+  const screenRadius = outerRadius();
+
+  const screenHtml = `
+    <div class="screen${state.shadows?"":" flat"}" id="screenEl" style="width:${d.w}px;height:${d.h}px;border-radius:${screenRadius}px;background:${bgCss()}">
+      ${hw}
+      ${statusHtml}
+      ${navHtml}
+      <div class="content">
+        <div class="cover-wrap"><div class="cover" style="width:${coverPx}px;border-radius:${state.pl.radius}px;${artStyle(state.pl)}">${artInner(state.pl,P)}</div></div>
+        <div class="pl-title" data-txt="pl.title" style="color:${P.ink}">${esc(state.pl.title)}</div>
+        <div class="pl-artist" data-txt="pl.artist" style="color:${P.ink2}">${esc(state.pl.artist)}</div>
+        ${actHtml}
+        <div class="tracks" style="--sep:${P.sep};--sep-left:${sepLeft}px;padding-bottom:${bottomH + 16}px">${tracksHtml}</div>
+      </div>
+      ${bottomHtml}
+      ${homeHtml}
+    </div>`;
+
+  const fc = FRAME_COLORS[state.frameColor];
+  const cv = state.canvas;
+  const devShadow = devShadowCss();
+  let html;
+  if(state.frameOn){
+    const [bt,bx,bb] = d.bez;
+    const sideBtns = isClassic ? "" : `
+      <span class="side-btn" style="left:-2.5px;top:${d.h*0.13}px;width:3px;height:26px;background:${fc.btn}"></span>
+      <span class="side-btn" style="left:-2.5px;top:${d.h*0.20}px;width:3px;height:52px;background:${fc.btn}"></span>
+      <span class="side-btn" style="left:-2.5px;top:${d.h*0.28}px;width:3px;height:52px;background:${fc.btn}"></span>
+      <span class="side-btn" style="right:-2.5px;top:${d.h*0.22}px;width:3px;height:84px;background:${fc.btn}"></span>`;
+    const classicBits = isClassic ? `
+      <span class="speaker" style="top:${-bt/2-4}px"></span>
+      <span class="camera-c" style="top:${-bt/2-5}px"></span>
+      <span class="home-btn" style="bottom:${-bb/2-26}px;border-color:${fc.btn}"></span>` : "";
+    html = `<div class="frame" style="--dev-body:${fc.body};--dev-body-r:${d.br}px;--dev-shadow:${devShadow}">
+      <div class="body" style="padding:${bt}px ${bx}px ${bb}px">
+        <div style="position:relative">${screenHtml}${classicBits}</div>
+        ${sideBtns}
+      </div>
+    </div>`;
+  } else {
+    html = `<div class="frame plain" style="--dev-shadow:${devShadow}"><div class="body">${screenHtml}</div></div>`;
+  }
+
+  /* ---- place the device on its backdrop ---- */
+  const tf = devTransform(canvasGeom().ds);
+  if(tf) html = html.replace('style="', `style="${tf}`);   /* fold scale+tilt into the frame's own style attribute */
+
+  let el = document.getElementById("canvasEl");
+  if(!el){
+    viewport.innerHTML = `<div class="canvas" id="canvasEl"></div>`;
+    el = document.getElementById("canvasEl");
+  }
+  const oldFrame = el.querySelector(".frame");
+  if(oldFrame) oldFrame.remove();
+  syncBackdrop(el);                      /* keeps the existing background node alive */
+  el.insertAdjacentHTML("beforeend", html);
+  applyGeom(el);
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ============================================================
+   6. CONTROL PANEL
+   ============================================================ */
+function get(p){return p.split(".").reduce((o,k)=>o==null?o:o[k],state);}
+function fromDefaults(p){return p.split(".").reduce((o,k)=>o==null?o:o[k], typeof DEFAULTS==="undefined"?null:DEFAULTS);}
+/* a settings file saved by an older build won't have every key — heal it instead of
+   rendering "undefined" into the UI */
+function val(p, fallback){
+  let v = get(p);
+  if(v === undefined || v === null){
+    const d = fromDefaults(p);
+    v = (d === undefined || d === null) ? fallback : d;
+    set(p, v);
+  }
+  return v;
+}
+function set(p,v){const ks=p.split(".");const last=ks.pop();const o=ks.reduce((a,k)=>a[k],state);o[last]=v;}
+
+const SW_BG = ["#FFFFFF","#F2F2F7","#000000","#1C1C1E","#1B8A78","#0B3D5C","#2E2A5E","#7A1F3D","#E8C8D8","#FBE8C8"];
+const SW_ART= ["#D1D1D6","#E5E5EA","#8E8E93","#3A3A3C","#FA243C","#FF9F0A","#30D158","#0A84FF","#BF5AF2","#FFFFFF"];
+
+function seg(path,opts){
+  const cur=val(path, opts[0][0]);
+  return `<div class="segmented" data-b="${path}">${opts.map(o=>`<button type="button" data-v="${o[0]}" aria-pressed="${cur===o[0]}">${o[1]}</button>`).join("")}</div>`;
+}
+function tog(path,label){
+  return `<label class="toggle"><input type="checkbox" data-b="${path}" ${val(path,false)?"checked":""}><span class="track"></span><span>${label}</span></label>`;
+}
+function txt(path,label,ph=""){
+  return `<div class="field"><label>${label}</label><input type="text" data-b="${path}" value="${esc(val(path,""))}" placeholder="${ph}"></div>`;
+}
+function colorRow(path,label,swatches){
+  return `<div class="field"><label>${label}</label><div class="row">
+    <input type="color" data-b="${path}" value="${val(path,swatches[0])}">
+    <div class="swatches">${swatches.map(c=>`<button type="button" data-sw="${path}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join("")}</div>
+  </div></div>`;
+}
+function rng(path,label,min,max,step,suffix=""){
+  const v = val(path, Number(min));
+  return `<div class="field"><label>${label} <span class="mono" data-out="${path}">${v}${suffix}</span></label>
+    <input type="range" data-b="${path}" data-num="1" min="${min}" max="${max}" step="${step}" value="${v}"></div>`;
+}
+function artBlock(prefix,labelPrefix,siAttr=""){
+  const o = get(prefix);
+  const style = o.img?`background-image:url('${o.img}')`:`background-color:${o.color}`;
+  return `<div class="field"><label>${labelPrefix} 이미지</label>
+    <div class="thumb-pick">
+      <span class="thumb-prev" data-prev="${prefix}" style="${style}"></span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <div class="row">
+          <button type="button" class="file-btn" data-upload="${prefix}">파일 업로드</button>
+          ${o.img?`<button type="button" class="btn danger" data-clearimg="${prefix}">지우기</button>`:""}
+        </div>
+        <input type="text" data-ytin="${prefix}" placeholder="YouTube 링크 붙여넣기" value="${esc(o.yt||"")}">
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input type="color" data-b="${prefix}.color" value="${o.color}">
+      <div class="swatches">${SW_ART.map(c=>`<button type="button" data-sw="${prefix}.color" data-c="${c}" style="background:${c}"></button>`).join("")}</div>
+    </div>
+  </div>`;
+}
+
+function imgPick(prefix,label){
+  const oo = get(prefix);
+  return `<div class="field"><label>${label}</label>
+    <div class="thumb-pick">
+      <span class="thumb-prev" style="${oo.img?`background-image:url('${oo.img}')`:"background-color:var(--panel-2)"}"></span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <div class="row">
+          <button type="button" class="file-btn" data-upload="${prefix}">파일 업로드</button>
+          ${oo.img?`<button type="button" class="btn danger" data-clearimg="${prefix}">지우기</button>`:""}
         </div>
       </div>
-      <div class="chrome-bar">
-        <span class="nav"><span class="navbtn">${I.navBack}</span><span class="navbtn off">${I.navFwd}</span><span class="navbtn">${I.navReload}</span></span>
-        <div class="omni"><span style="opacity:.62;display:flex">${I.navInfo}</span><span>${esc(u.url)}</span>
-          <span style="margin-left:auto;opacity:.62;display:flex">${I.navStar}</span></div></div>
-      ${S.bookmarks?`<div class="bmarks">${u.bmk.map(b=>`<span><i style="${b.img?`background-image:url('${b.img}')`:`background:${b.c}`}"></i>${esc(b.t)}</span>`).join('')}</div>`:''}
-    </div>`;
-  }
-  const menus = String(S.ui.macMenus||'').split(',').map(x=>x.trim()).filter(Boolean);
-  const mac = S.macbar ? `<div class="macbar ${dark?'dark':''}">${I.apple}<b>${esc(S.ui.macApp)}</b>
-      ${menus.map(m=>`<span>${esc(m)}</span>`).join('')}
-      <span class="mright">${S.ui.macWifi?I.wifi:''}<span>${esc(S.ui.macTime)}</span></span></div>` : '';
-
-  const sizeCSS = `width:${W}px;` + (H ? `height:${H}px;` : '');
-  const screen = `<div class="yt pc-screen" data-t="${S.theme}" style="${sizeCSS}">${mac}${chrome}${page}</div>`;
-  return wrapMockup(screen, W);
-}
-
-/* ---------- 모바일 ---------- */
-function mbStatus(){
-  const b = Math.max(3, Math.min(100, Number(S.ui.battery)||0));
-  return `<div class="mb-status"><span>${esc(S.ui.time)}</span>
-    <span class="rr">${I.mute}${I.cell}${I.wifi}
-      <span style="display:inline-flex;align-items:center;width:27px;height:13px;border:1.5px solid rgba(255,255,255,.5);border-radius:4px;padding:1.5px">
-        <span style="display:block;height:100%;width:${b}%;background:${b<=20?'#ff3b30':'#fff'};border-radius:2px"></span></span>
-    </span></div>`;
-}
-function mbSheet(full){
-  return `<div class="mb-sheet ${full?'full':''}">
-    ${full?'<div class="mb-grab"></div>':''}
-    <div class="mb-sheet-head"><span class="t">댓글</span><span class="sp">${I.info}${I.close}</span></div>
-    <div class="mb-sortchips"><span class="mb-sortchip on">인기순</span><span class="mb-sortchip">최신순</span></div>
-    <div class="mb-guide">YouTube 커뮤니티 가이드를 따라 항상 타인을 존중하는 태도로 댓글을 작성하세요. <span style="color:var(--blue)">자세히 알아보기</span></div>
-    <div class="mb-cmlist mb scrollpane"><div class="spin">${S.comments.map((c,i)=>commentHTML(c,0,true,String(i))).join('')}</div></div>
-    <div class="mb-input">${avatarHTML(S.video.handle,S.video.avatar,30,S.video.color,'video.avatar')}
-      <div class="box">댓글 올리기...</div><div class="circ">💰</div></div>
-    <div class="mb-home"></div></div>`;
-}
-function mbWatch(){
-  const v = S.video;
-  let cpi = S.comments.findIndex(c=>!c.pinned); if(cpi<0) cpi = 0;
-  const cp = S.comments[cpi] || {};
-  let inner = `<div class="mb-vtitle">${esc(v.title)}</div>
-    <div class="mb-vmeta"><span>${esc(v.handle)}</span><span>좋아요 ${esc(v.likes)}개</span><span>${esc(v.views)}</span><span>${esc(v.when)}</span><span>${esc(v.hashtag)}</span><span class="more">더보기</span></div>
-    <div class="mb-chanrow">${avatarHTML(v.channel,v.avatar,36,v.color,'video.avatar')}
-      <span style="font-size:14px;font-weight:600">${esc(v.channel)}</span>
-      <div class="mb-act">${v.subscribed?'구독중':'구독'}</div>
-      <div style="margin-left:auto;display:flex;gap:12px;color:var(--tx)">${I.up}${I.down}${I.share}${I.dots}</div></div>
-    <div class="mb-cmcard"><div class="h">댓글 <span class="n">${esc((String(S.ui.count).match(/\d[\d,]*/)||[''])[0])}</span>
-        <span style="margin-left:auto;color:var(--tx2)">${I.dots}</span></div>
-      <div class="p">${avatarHTML(cp.name,cp.avatar,24,cp.color,'c:'+cpi)}<div>${esc(String(cp.text||'').slice(0,86))}…</div></div></div>`;
-  inner += S.recs.map((r,i)=>`<div class="mb-rec">
-      <div class="thumb" style="${ph(r.title)}">${r.thumb?imgLayer(r.thumb, r.thumbFx, 16/9, 'rec:'+i):''}<span class="d">${esc(r.dur)}</span></div>
-      <div class="meta">${avatarHTML(r.ch,'',36)}<div style="flex:1"><div class="rt">${esc(r.title)}</div>
-        <div class="rc">${esc(r.ch)} · ${esc(r.meta)}</div></div><div style="color:var(--tx2)">${I.dots}</div></div></div>`).join('');
-  return `<div class="mb-scroll scrollpane"><div class="spin">${inner}</div></div>`;
-}
-function renderMobile(){
-  const v = S.video;
-  const [W,H] = PHONE;
-  let inner = mbStatus();
-  if(S.layout==='comments'){
-    inner += mbSheet(true);
-  } else {
-    inner += `<div class="mb-player" style="${ph(v.title)}">${v.thumb?imgLayer(v.thumb, v.thumbFx, 16/9, 'video.thumb'):''}${playerOverlay(true)}</div>`;
-    inner += (S.layout==='recs') ? mbWatch() : mbSheet(false);
-  }
-  const screen = `<div class="yt mb-screen" data-t="${S.theme}" style="width:${W}px;height:${H}px">${inner}</div>`;
-  return wrapMockup(screen, W);
-}
-
-function wrapMockup(screen, w){
-  if(S.mockup==='macbook')
-    return `<div class="mockcol"><div class="lid" style="width:${w+24}px"><div class="notch"></div><div class="inner">${screen}</div></div><div class="lid-base"></div></div>`;
-  if(S.mockup==='imac')
-    return `<div class="mockcol"><div class="imac-body" style="width:${w+32}px"><div class="inner" style="width:${w}px">${screen}</div>
-      <div class="imac-chin"><span style="color:#8a8f96">${I.apple.replace('width="13" height="16"','width="22" height="27"')}</span></div>
-    </div><div class="imac-neck"></div><div class="imac-foot"></div></div>`;
-  if(S.mockup==='iphone')
-    return `<div class="iph-body" style="width:${w+22}px"><div class="iph-island"></div><div class="inner">${screen}</div></div>`;
-  return `<div class="plain-shadow">${screen}</div>`;
-}
-
-function renderPreview(){
-  document.getElementById('capture').innerHTML = S.device==='pc' ? renderPC() : renderMobile();
-  measureStage();
-}
-
-/* ===================== 컨트롤 패널 ===================== */
-function seg(label, key, opts, cls){
-  return `<div class="field"><span class="flabel">${label}</span><div class="segs ${cls||''}" data-seg="${key}">` +
-    opts.map(o=>`<button type="button" data-v="${o[0]}" aria-pressed="${String(S[key])===String(o[0])}">${o[1]}</button>`).join('') + `</div></div>`;
-}
-function sw(label, key, disabled){
-  return `<button type="button" class="switch" data-sw="${key}" aria-pressed="${!!S[key]}" ${disabled?'disabled':''}>
-    <span>${label}</span><span class="track"></span></button>`;
-}
-function txt(label, path, val){
-  return `<div class="field"><label>${label}</label><input type="text" data-path="${path}" value="${esc(val)}"></div>`;
-}
-function vseg(label, key, opts){
-  return `<div class="field"><span class="flabel">${label}</span><div class="segs" data-vseg="${key}">` +
-    opts.map(o=>`<button type="button" data-v="${o[0]}" aria-pressed="${String(S.video[key])===String(o[0])}">${o[1]}</button>`).join('') + `</div></div>`;
-}
-function playerCtl(){
-  const v = S.video;
-  const on = (v.playerUI||'thumb')==='controls';
-  return `<div class="fxbox">
-    ${vseg('영상 화면','playerUI',[['thumb','썸네일'],['clean','재생 화면'],['controls','컨트롤바']])}
-    ${on?vseg('상태','playing',[[true,'재생 중'],[false,'일시정지']]):''}
-    ${on?`<label class="fxrow"><span>위치</span><input type="range" data-poss min="0" max="1000" step="1" value="${Math.round(playPct()*10)}"><b>${Math.round(playPct())}%</b></label>`:''}
-    <p class="hint">${on
-      ? '빨간 진행바는 현재 위치 ÷ 총 길이로 자동 계산돼요.'
-      : (v.playerUI==='clean' ? '컨트롤 없이 재생만 하는 화면이에요.' : '오른쪽 아래에 재생시간 배지가 붙어요.')}</p>
-  </div>`;
-}
-function fxCtl(key){
-  const fx = getFx(key);
-  const x = fx.x!=null?fx.x:50, y = fx.y!=null?fx.y:50, z = fx.z||100;
-  return `<div class="fxbox">
-    <span class="flabel">이미지 위치 · 확대</span>
-    <label class="fxrow"><span>좌우</span><input type="range" data-fxk="${key}" data-fxp="x" min="0" max="100" step="1" value="${x}"><b>${x}</b></label>
-    <label class="fxrow"><span>상하</span><input type="range" data-fxk="${key}" data-fxp="y" min="0" max="100" step="1" value="${y}"><b>${y}</b></label>
-    <label class="fxrow"><span>확대</span><input type="range" data-fxk="${key}" data-fxp="z" min="100" max="400" step="1" value="${z}"><b>${z}%</b></label>
-    <button class="btn mini" data-fxreset="${key}">위치 초기화</button>
-  </div>`;
-}
-function palette(scope, cur){
-  return `<div class="field"><span class="flabel">프로필 색</span><div class="pal">` +
-    YT_COLORS.map(c=>`<b data-col="${scope}" data-c="${c}" style="background:${c}" aria-pressed="${(cur||'').toUpperCase()===c}" title="${c}"></b>`).join('') +
-    `<input type="color" data-colcustom="${scope}" value="${cur||'#FF9800'}" title="직접 지정"></div></div>`;
-}
-
-function renderRail(){
-  const rail = document.getElementById('rail');
-  const v = S.video, u = S.ui, isPC = S.device==='pc';
-  let h = '';
-
-  h += `<details class="sec" open><summary><span class="sec-num">01</span>기본 설정<span class="sec-chev">›</span></summary><div class="sec-body">
-    ${seg('기기','device',[['pc','PC'],['mobile','폰']])}
-    ${seg('테마','theme',[['light','라이트'],['dark','다크']])}
-    ${seg('화면 구성','layout',[['comments','댓글창'],['video','영상+댓글'],['recs','영상+추천']])}
-    ${isPC ? seg('화면 비율','ratio',[['16:9','16:9'],['16:10','16:10'],['4:3','4:3'],['9:16','9:16'],['auto','자동']]) : ''}
-    ${isPC ? sw('추천 영상 사이드바', 'sideRecs', S.layout==='recs') : ''}
-    <p class="hint">${S.layout==='video'
-      ? '실제 유튜브 시청 화면 그대로예요. 영상 아래로 스크롤하면 제목·설명·댓글이 이어져요.'
-      : (S.layout==='recs' ? '추천 영상이 사이드바(폰은 아래)에 깔리는 시청 화면이에요.' : '댓글만 꽉 채운 화면이에요.')}
-      ${isPC?'':'폰 화면은 440×956으로 고정돼요.'}</p>
-    <p class="hint">화면 크기는 고정이라 댓글이 넘치면 미리보기에서 <b>스크롤</b>하면 돼요. 저장할 때 스크롤한 위치 그대로 찍혀요.</p>
-  </div></details>`;
-
-  h += `<details class="sec" open><summary><span class="sec-num">02</span>프레임 · 목업<span class="sec-chev">›</span></summary><div class="sec-body">`;
-  if(isPC){
-    h += seg('목업','mockup',[['none','없음'],['macbook','맥북'],['imac','아이맥']]);
-    h += sw('크롬 브라우저 창','browser');
-    h += sw('맥 상단 메뉴바','macbar');
-    h += sw('즐겨찾기 바','bookmarks', !S.browser);
-    h += sw('유튜브 헤더','ytHeader');
-    h += txt('주소창','ui.url',u.url);
-    h += `<div class="row2">${txt('메뉴바 앱 이름','ui.macApp',u.macApp)}${txt('메뉴바 오른쪽','ui.macTime',u.macTime)}</div>`;
-    h += `<div class="field"><label>메뉴 항목 (쉼표로 구분)</label>
-      <textarea data-path="ui.macMenus" rows="2">${esc(u.macMenus)}</textarea></div>`;
-    h += `<button type="button" class="switch" data-sw="_macWifi" aria-pressed="${!!u.macWifi}"><span>메뉴바 와이파이 아이콘</span><span class="track"></span></button>`;
-  } else {
-    h += seg('목업','mockup',[['none','없음'],['iphone','핸드폰']]);
-    h += `<div class="row2">${txt('시간','ui.time',u.time)}
-      <div class="field"><label>배터리 %</label><input type="text" data-path="ui.battery" value="${esc(u.battery)}"></div></div>`;
-  }
-  h += `<p class="hint">목업을 끄면 스크린샷처럼 네모난 화면만 나와요.</p></div></details>`;
-
-  if(isPC){
-    h += `<details class="sec"><summary><span class="sec-num">03</span>브라우저 탭 · 즐겨찾기<span class="sec-chev">›</span></summary><div class="sec-body">
-      <span class="flabel">탭 — 파비콘은 색 또는 이미지, [활성]으로 현재 탭 지정</span>
-      ${u.tabs.map((t,i)=>`<div class="listitem" style="flex-direction:row;align-items:center;gap:7px">
-        ${t.img
-          ? `<span class="thumb" style="width:26px;height:26px;border-radius:6px;background-image:url('${t.img}');background-size:cover"></span>`
-          : `<input type="color" data-tabcol="${i}" value="${t.color}" style="width:26px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer">`}
-        <input type="text" data-tab="${i}" value="${esc(t.title)}" placeholder="탭 제목">
-        <label class="iconbtn" title="파비콘 이미지">🖼<input type="file" accept="image/*" data-tabimg="${i}" style="display:none"></label>
-        ${t.img?`<button class="iconbtn" data-tabimgclr="${i}" title="이미지 제거">↺</button>`:''}
-        <button class="chip" data-active="${i}" aria-pressed="${i===u.active}">활성</button>
-        <button class="iconbtn del" data-deltab="${i}">✕</button></div>`).join('')}
-      <button class="btn wide" data-addtab="1">+ 탭 추가</button>
-      <span class="flabel" style="margin-top:6px">즐겨찾기 — 아이콘에 이미지도 넣을 수 있어요</span>
-      ${u.bmk.map((b,i)=>`<div class="listitem" style="flex-direction:row;align-items:center;gap:7px">
-        ${b.img
-          ? `<span class="thumb" style="width:26px;height:26px;border-radius:6px;background-image:url('${b.img}');background-size:cover"></span>`
-          : `<input type="color" data-bmkcol="${i}" value="${b.c}" style="width:26px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer">`}
-        <input type="text" data-bmk="${i}" value="${esc(b.t)}" placeholder="이름">
-        <label class="iconbtn" title="아이콘 이미지">🖼<input type="file" accept="image/*" data-bmkimg="${i}" style="display:none"></label>
-        ${b.img?`<button class="iconbtn" data-bmkimgclr="${i}" title="이미지 제거">↺</button>`:''}
-        <button class="iconbtn del" data-delbmk="${i}">✕</button></div>`).join('')}
-      <button class="btn wide" data-addbmk="1">+ 즐겨찾기 추가</button>
-    </div></details>`;
-  }
-
-  h += `<details class="sec"><summary><span class="sec-num">04</span>영상 정보<span class="sec-chev">›</span></summary><div class="sec-body">
-    <div class="filepick"><span class="thumb" style="${v.thumb?`background-image:url('${v.thumb}')`:ph(v.title)}"></span>
-      <label class="pk">썸네일 업로드<input type="file" accept="image/*" data-img="video.thumb"></label>
-      ${v.thumb?`<button class="btn mini" data-clear="video.thumb">삭제</button>`:''}</div>
-    ${v.thumb?fxCtl('video.thumb'):''}
-    <div class="filepick"><span class="thumb circle" style="${v.avatar?`background-image:url('${v.avatar}')`:`background-color:${v.color||autoColor(v.channel)}`}"></span>
-      <label class="pk">채널 프로필 업로드<input type="file" accept="image/*" data-img="video.avatar"></label>
-      ${v.avatar?`<button class="btn mini" data-clear="video.avatar">삭제</button>`:''}</div>
-    ${v.avatar?fxCtl('video.avatar'):''}
-    ${palette('video', v.color)}
-    ${txt('영상 제목','video.title',v.title)}
-    <div class="row2">${txt('채널명','video.channel',v.channel)}${txt('핸들','video.handle',v.handle)}</div>
-    <div class="row2">${txt('구독자','video.subs',v.subs)}${txt('현재 위치','video.cur',v.cur)}</div>
-    ${txt('총 길이','video.dur',v.dur)}
-    ${playerCtl()}
-    <div class="row3">${txt('좋아요','video.likes',v.likes)}${txt('조회수','video.views',v.views)}${txt('업로드','video.when',v.when)}</div>
-    <div class="row2">${txt('해시태그','video.hashtag',v.hashtag)}${txt('댓글 수 표시','ui.count',u.count)}</div>
-    ${isPC?txt('검색창 문구','ui.search',u.search):''}
-    ${sw('구독중 상태','_subscribed')}
-  </div></details>`;
-
-  h += `<details class="sec" open><summary><span class="sec-num">05</span>댓글<span class="sec-chev">›</span></summary><div class="sec-body">
-    <div style="display:flex;flex-direction:column;gap:11px">${S.comments.map((c,i)=>cnode(c,[i])).join('')}</div>
-    <button class="btn wide" data-add="root">+ 댓글 추가</button>
-    <p class="hint"><b>+ 답글</b>을 누르면 그 아래로 계속 붙어요. 깊이 제한 없음.</p>
-  </div></details>`;
-
-  h += `<details class="sec"><summary><span class="sec-num">06</span>추천 영상<span class="sec-chev">›</span></summary><div class="sec-body">
-    ${S.recs.map((r,i)=>recNode(r,i)).join('')}
-    <button class="btn wide" data-addrec="1">+ 추천 영상 추가</button>
-  </div></details>`;
-
-  h += `<details class="sec"><summary><span class="sec-num">07</span>저장<span class="sec-chev">›</span></summary><div class="sec-body">
-    ${seg('배율','_scale',[[1,'1x'],[2,'2x'],[3,'3x'],[4,'4x']])}
-    <p class="hint">저장 크기 약 <b>${(()=>{const [w,hh]=S.device==='pc'?(RATIOS[S.ratio]||RATIOS['16:9']):PHONE;
-      const sc=S._scale||3; return `${Math.round(w*sc)} × ${hh?Math.round(hh*sc):'자동'}`;})()}px</b></p>
-    <button class="btn wide primary" id="btnPng2">PNG로 저장</button>
-    <p class="hint">넣은 사진은 원본 해상도 그대로 그려지니까 배율을 올릴수록 또렷해져요. 미리보기에서 스크롤한 위치 그대로 저장돼요.</p>
-  </div></details>`;
-
-  rail.innerHTML = h;
-  rail.querySelector('.switch[data-sw="_subscribed"]')?.setAttribute('aria-pressed', String(!!S.video.subscribed));
-}
-
-function depthName(d){ return d===0?'댓글':(d===1?'대댓글':'대'.repeat(d)+'댓글'); }
-function cnode(c, path){
-  const d = path.length-1, p = path.join('.');
-  return `<div class="cnode ${d===0?'lv1':''}">
-    <div class="cnode-head"><span class="depth-tag">${depthName(d)}</span>
-      <span style="font-size:11px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</span>
-      <span class="sp"><button class="iconbtn" data-mv="${p}" data-dir="-1">↑</button>
-        <button class="iconbtn" data-mv="${p}" data-dir="1">↓</button>
-        <button class="iconbtn del" data-del="${p}">✕</button></span></div>
-    <div class="row2">
-      <input type="text" data-c="${p}" data-f="name" value="${esc(c.name)}" placeholder="@닉네임">
-      <input type="text" data-c="${p}" data-f="time" value="${esc(c.time)}" placeholder="20시간 전"></div>
-    <textarea data-c="${p}" data-f="text" rows="3" placeholder="댓글 내용">${esc(c.text)}</textarea>
-    <div class="row2">
-      <input type="text" data-c="${p}" data-f="likes" value="${esc(c.likes||'')}" placeholder="좋아요 수">
-      <div class="filepick" style="padding:5px 8px">
-        <span class="thumb circle" style="width:22px;height:22px;${c.avatar?`background-image:url('${c.avatar}')`:`background-color:${c.color||autoColor(c.name)}`}"></span>
-        <label class="pk">프로필<input type="file" accept="image/*" data-cimg="${p}"></label>
-        ${c.avatar?`<button class="iconbtn" data-cimgclr="${p}" title="사진 빼고 색으로">↺</button>`:''}
-      </div></div>
-    ${c.avatar?fxCtl('c:'+p):''}
-    ${palette('c:'+p, c.color)}
-    ${c.avatar?`<p class="hint" style="margin-top:-4px">사진이 들어가 있어요. 색으로 되돌리려면 ↺ 또는 색을 누르세요.</p>`:''}
-    <div class="chips">
-      <button class="chip" data-flag="${p}" data-k="pinned" aria-pressed="${!!c.pinned}">📌 고정됨</button>
-      <button class="chip" data-flag="${p}" data-k="owner" aria-pressed="${!!c.owner}">채널 주인</button>
-      <button class="chip" data-flag="${p}" data-k="hearted" aria-pressed="${!!c.hearted}">❤️ 하트</button>
-      <button class="chip" data-flag="${p}" data-k="more" aria-pressed="${!!c.more}">자세히</button>
-      <button class="chip" data-reply="${p}" style="border-style:dashed">+ 답글</button>
     </div>
-    ${(c.replies&&c.replies.length)?`<div class="cnode-kids">${c.replies.map((r,i)=>cnode(r, path.concat(i))).join('')}</div>`:''}
   </div>`;
 }
-function recNode(r,i){
-  return `<div class="listitem">
-    <div class="cnode-head"><span class="depth-tag">추천 ${i+1}</span>
-      <span class="sp"><button class="iconbtn del" data-delrec="${i}">✕</button></span></div>
-    <input type="text" data-r="${i}" data-f="title" value="${esc(r.title)}" placeholder="제목">
-    <div class="row2"><input type="text" data-r="${i}" data-f="ch" value="${esc(r.ch)}" placeholder="채널">
-      <input type="text" data-r="${i}" data-f="meta" value="${esc(r.meta)}" placeholder="조회수 · 날짜"></div>
-    <div class="row2"><input type="text" data-r="${i}" data-f="dur" value="${esc(r.dur)}" placeholder="12:41">
-      <div class="filepick" style="padding:5px 8px">
-        <span class="thumb" style="width:34px;height:20px;${r.thumb?`background-image:url('${r.thumb}')`:ph(r.title)}"></span>
-        <label class="pk">썸네일<input type="file" accept="image/*" data-rimg="${i}"></label>
-        ${r.thumb?`<button class="iconbtn" data-rimgclr="${i}" title="이미지 제거">↺</button>`:''}
-      </div></div>
-    ${r.thumb?fxCtl('rec:'+i):''}</div>`;
+function deviceOptions(){
+  return Object.entries(DEVICES).map(([k,d])=>`<option value="${k}" ${state.device===k?"selected":""}>${d.label} · ${d.w}×${d.h}</option>`).join("");
 }
 
-/* ===================== 트리 조작 ===================== */
-function getNode(p){
-  const idx = p.split('.').map(Number);
-  let arr = S.comments, node = null;
-  for(const i of idx){ node = arr[i]; arr = node.replies = node.replies||[]; }
-  return node;
+function renderPanel(){
+  const body = document.getElementById("panelBody");
+  /* keep the panel where the user left it: which sections are open, and the scroll position */
+  const openState = [...body.querySelectorAll("details.sec")].map(d=>d.open);
+  const scroll = body.scrollTop;
+  body.innerHTML = `
+  <details class="sec" open><summary><span class="num">01</span>기기 &amp; 목업<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${tog("frameOn","애플 목업(기기 프레임) 표시")}
+      <div class="field"><label>기기</label><select data-b="device">${deviceOptions()}</select></div>
+      <div class="field"><label>프레임 색상</label><select data-b="frameColor">${Object.entries(FRAME_COLORS).map(([k,v])=>`<option value="${k}" ${state.frameColor===k?"selected":""}>${v.label}</option>`).join("")}</select></div>
+      ${tog("roundScreen","프레임 없을 때 모서리 둥글게")}
+      <div class="hint">끄면 실제 아이폰 스크린샷처럼 네모나게 나와요.</div>
+      <div class="divider"></div>
+      ${tog("shadows","그림자 표시")}
+      <div class="hint">기기·앨범·미니플레이어·탭바의 그림자예요. 꺼두면 미리보기와 저장본이 무조건 똑같이 나옵니다. 아이폰·사파리는 그림자를 제대로 못 굽는 경우가 있어서 기본은 꺼짐이에요.</div>
+      <div class="hint">끄면 실제 아이폰 스크린샷처럼 네모나게 나와요.</div>
+    </div>
+  </details>
+
+  <details class="sec"><summary><span class="num">02</span>배경 위에 올리기<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${tog("canvas.on","배경 위에 올리기")}
+      <div class="field"><label>배경 종류</label>${seg("canvas.mode",[["solid","단색"],["gradient","그라데이션"],["image","이미지"]])}</div>
+      ${state.canvas.mode==="image"
+        ? imgPick("canvas","배경 이미지")
+          + `<div class="field"><label>채우기</label>${seg("canvas.fit",[["cover","꽉 채우기"],["contain","전체 보이기"],["custom","직접 조정"]])}</div>`
+          + (state.canvas.fit==="custom"
+              ? rng("canvas.zoom","이미지 크기",100,320,1,"%")
+                + rng("canvas.px","가로 위치",0,100,1,"%")
+                + rng("canvas.py","세로 위치",0,100,1,"%")
+              : "")
+        : colorRow("canvas.c1", state.canvas.mode==="gradient"?"시작 색":"배경 색", ["#EDE7F4","#FFFFFF","#0E0D12","#1B8A78","#F4D9E0","#DDE8F5","#F6EEDC","#2E2A5E"])
+          + (state.canvas.mode==="gradient" ? colorRow("canvas.c2","끝 색",["#CFC3E4","#FFFFFF","#000000","#0B3D5C","#FBE8C8","#7A1F3D","#30D158","#FF9F0A"]) + rng("canvas.angle","각도",0,360,1,"°") : "")}
+      ${rng("canvas.dim","어둡게",0,70,1,"%")}
+      <div class="divider"></div>
+      ${rng("canvas.devScale","기기 크기",30,100,1,"%")}
+      ${rng("canvas.pad","여백",0,200,2,"px")}
+      <div class="field"><label>캔버스 비율</label>${seg("canvas.ratio",[["auto","자동"],["1:1","1:1"],["4:5","4:5"],["9:16","9:16"],["16:9","16:9"],["custom","직접"]])}</div>
+      ${state.canvas.ratio==="custom" ? `<div class="row">
+        <div class="field" style="flex:1"><label>가로 (px)</label><input type="number" data-b="canvas.cw" data-num="1" min="200" max="4000" step="10" value="${state.canvas.cw}"></div>
+        <div class="field" style="flex:1"><label>세로 (px)</label><input type="number" data-b="canvas.ch" data-num="1" min="200" max="4000" step="10" value="${state.canvas.ch}"></div>
+      </div>
+      <div class="hint">기기보다 작게 잡으면 잘려 보여요. 여백 슬라이더는 이 모드에선 무시됩니다.</div>` : ""}
+      ${rng("canvas.radius","캔버스 모서리",0,64,1,"px")}
+      ${rng("canvas.shadow","기기 그림자",0,100,1,"")}
+      ${rng("canvas.tilt","기울기",-20,20,1,"°")}
+    </div>
+  </details>
+
+  <details class="sec" open><summary><span class="num">03</span>화면 배경<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${seg("bg.mode",[["solid","단색"],["gradient","그라데이션"]])}
+      ${colorRow("bg.c1", state.bg.mode==="gradient"?"시작 색":"배경 색", SW_BG)}
+      ${state.bg.mode==="gradient"?colorRow("bg.c2","끝 색",SW_BG)+rng("bg.angle","각도",0,360,1,"°"):""}
+      <div class="divider"></div>
+      <div class="field"><label>글자 테마</label>${seg("theme",[["auto","자동"],["light","밝게"],["dark","어둡게"]])}</div>
+      <div class="field"><label>강조(틴트) 색</label>${seg("tintMode",[["auto","배경에서 자동"],["custom","직접 지정"]])}</div>
+      ${state.tintMode==="custom"?colorRow("tint","틴트 색",SW_ART):""}
+      <div class="hint">틴트는 곡 아티스트명·별표·탭바 라벨에 적용돼요. 애플뮤직이 앨범 색에서 뽑아 쓰는 그 색이에요.</div>
+    </div>
+  </details>
+
+  <details class="sec"><summary><span class="num">04</span>상태바<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${tog("status.show","상태바 표시")}
+      ${txt("status.time","현재 시각","9:41")}
+      ${rng("status.battery","배터리",0,100,1,"%")}
+      ${tog("status.charging","충전 중")}
+      ${tog("status.silent","무음 모드 아이콘")}
+      ${rng("status.signal","신호 세기",0,4,1,"칸")}
+      ${tog("status.wifi","Wi-Fi 아이콘")}
+    </div>
+  </details>
+
+  <details class="sec"><summary><span class="num">05</span>상단 바<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${tog("nav.show","상단 바 표시")}
+      ${tog("nav.back","뒤로 가기")}
+      ${tog("nav.person","공동 작업자 추가")}
+      ${tog("nav.share","공유")}
+      ${tog("nav.more","더보기(⋯)")}
+    </div>
+  </details>
+
+  <details class="sec" open><summary><span class="num">06</span>플레이리스트<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${txt("pl.title","제목")}
+      ${txt("pl.artist","만든 사람 / 설명")}
+      ${artBlock("pl","앨범 커버")}
+      ${rng("pl.size","커버 크기",40,92,1,"%")}
+      ${rng("pl.radius","커버 모서리",0,40,1,"px")}
+      <div class="divider"></div>
+      ${tog("act.show","재생 버튼 줄 표시")}
+      ${txt("act.label","버튼 문구","재생")}
+      ${tog("act.shuffle","셔플 버튼")}
+      ${tog("act.download","다운로드 버튼")}
+      <div class="field"><label>재생 버튼 색</label>${seg("act.pillMode",[["auto","배경에 맞춤"],["custom","직접 지정"]])}</div>
+      ${state.act.pillMode==="custom"?colorRow("act.pillBg","버튼 색",["#FFFFFF","#000000","#FA243C","#F2F2F7","#1C1C1E"]):""}
+    </div>
+  </details>
+
+  <details class="sec" open><summary><span class="num">07</span>곡 목록<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${tog("list.stars","즐겨찾기 별표 열 표시")}
+      ${tog("list.art","곡 앨범 이미지 표시")}
+      ${tog("list.more","곡별 ⋯ 버튼")}
+      <div class="divider"></div>
+      <div class="songs" id="songs"></div>
+      <button type="button" class="btn full" id="addSong">＋ 곡 추가</button>
+    </div>
+  </details>
+
+  <details class="sec"><summary><span class="num">08</span>미니 플레이어<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${tog("mini.show","미니 플레이어 표시")}
+      ${txt("mini.title","곡 제목")}
+      ${txt("mini.artist","아티스트")}
+      ${artBlock("mini","앨범")}
+      ${tog("mini.playing","일시정지 아이콘으로")}
+      <div class="field"><label>목록에서 가져오기</label>
+        <select id="miniFrom"><option value="">— 선택 —</option></select>
+      </div>
+    </div>
+  </details>
+
+  <details class="sec"><summary><span class="num">09</span>탭 바<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      ${tog("tab.show","탭 바 표시")}
+      ${tog("tab.search","검색 버튼(원형)")}
+      <div class="field"><label>선택된 탭</label>${seg("tab.active",[["home","홈"],["new","새로운"],["radio","라디오"],["library","보관함"]])}</div>
+      ${colorRow("tab.accent","선택 탭 색",["#FA243C","#FF375F","#0A84FF","#30D158","#FF9F0A","#000000","#FFFFFF"])}
+      <div class="divider"></div>
+      ${tog("homeInd","홈 인디케이터")}
+    </div>
+  </details>
+
+  <details class="sec"><summary><span class="num">10</span>저장 &amp; 내보내기<span class="chev">${chev()}</span></summary>
+    <div class="sec-body">
+      <button type="button" class="btn full primary" id="exportBtn2">PNG로 저장 (3배율)</button>
+      <button type="button" class="btn full" id="saveJson">설정 파일로 저장 (.json)</button>
+      <button type="button" class="btn full" id="loadJson">설정 파일 불러오기</button>
+      <button type="button" class="btn full" id="resetAll">기본값으로 초기화</button>
+      <div class="divider"></div>
+      <div class="field"><label>저장 호환 모드</label>${seg("exportFlat",[["auto","자동"],["on","항상 켜기"],["off","끄기"]])}
+        <div class="hint">아이폰·사파리는 그림자를 제대로 못 굽습니다. 자동으로 감지해 안전한 방식으로 바꾸는데, 저장본 그림자가 네모로 나오면 "항상 켜기"로 두세요.</div>
+      </div>
+      <div class="hint">PNG는 화면에 보이는 그대로(배경·스크롤 위치 포함) 저장돼요. 설정은 브라우저에 남지 않으니, 이어서 만들 거면 .json으로 내려받아 두세요.</div>
+    </div>
+  </details>`;
+  if(openState.length){
+    body.querySelectorAll("details.sec").forEach((d,i)=>{ if(openState[i]!==undefined) d.open = openState[i]; });
+    body.scrollTop = scroll;
+  }
+  renderSongs();
 }
-function getParentArr(p){
-  const idx = p.split('.').map(Number);
-  let arr = S.comments;
-  for(let k=0;k<idx.length-1;k++) arr = arr[idx[k]].replies = arr[idx[k]].replies||[];
-  return { arr, i: idx[idx.length-1] };
+function chev(){return `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5 10 7l-5 4.5"/></svg>`;}
+
+function renderSongs(){
+  const wrap = document.getElementById("songs");
+  if(!wrap) return;
+  wrap.innerHTML = state.tracks.map((t,i)=>{
+    const style = t.img?`background-image:url('${t.img}')`:`background-color:${t.color}`;
+    return `<div class="song-card" data-si="${i}">
+      <div class="head">
+        <span class="idx">${String(i+1).padStart(2,"0")}</span>
+        <span class="grow"></span>
+        <button type="button" class="icon-btn" data-star="${i}" title="즐겨찾기" style="${t.star?"color:#FA243C":""}">${I.star("currentColor").replace('viewBox','width="13" height="13" viewBox')}</button>
+        <button type="button" class="icon-btn" data-mv="${i}" data-dir="-1" ${i===0?"disabled":""} title="위로">${I.up("currentColor")}</button>
+        <button type="button" class="icon-btn" data-mv="${i}" data-dir="1" ${i===state.tracks.length-1?"disabled":""} title="아래로">${I.down("currentColor")}</button>
+        <button type="button" class="icon-btn" data-del="${i}" title="삭제">${I.trash("currentColor")}</button>
+      </div>
+      <input type="text" data-si="${i}" data-tb="title" value="${esc(t.title)}" placeholder="곡 제목">
+      <input type="text" data-si="${i}" data-tb="artist" value="${esc(t.artist)}" placeholder="아티스트">
+      <div class="thumb-pick">
+        <span class="thumb-prev" style="${style}"></span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="row">
+            <button type="button" class="file-btn" data-upload="track:${i}">파일 업로드</button>
+            ${t.img?`<button type="button" class="btn danger" data-clearimg="track:${i}">지우기</button>`:""}
+            <input type="color" data-si="${i}" data-tb="color" value="${t.color}">
+          </div>
+          <input type="text" data-ytin="track:${i}" placeholder="YouTube 링크" value="${esc(t.yt||"")}">
+        </div>
+      </div>
+    </div>`;
+  }).join("");
 }
-/* 색을 고르면 올려둔 사진은 빠지고 색 동그라미로 돌아감 */
-function setColor(scope, col){
-  if(scope==='video'){ S.video.color = col; S.video.avatar = ''; }
-  else if(scope.startsWith('c:')){ const n = getNode(scope.slice(2)); n.color = col; n.avatar = ''; }
+
+/* ============================================================
+   7. IMAGE SOURCES  (upload / YouTube thumbnail)
+   ============================================================ */
+function targetObj(t){
+  if(t.startsWith("track:")) return state.tracks[+t.split(":")[1]];
+  return get(t);
 }
-
-/* ===================== 이벤트 ===================== */
-const rail = document.getElementById('rail');
-
-rail.addEventListener('click', e => {
-  const segBtn = e.target.closest('.segs button');
-  if(segBtn && segBtn.parentElement.dataset.vseg){
-    let v = segBtn.dataset.v;
-    if(v==='true') v = true; else if(v==='false') v = false;
-    S.video[segBtn.parentElement.dataset.vseg] = v;
-    return full();
-  }
-  if(segBtn){
-    const key = segBtn.parentElement.dataset.seg;
-    let v = segBtn.dataset.v;
-    if(v==='true') v = true; else if(v==='false') v = false; else if(key==='_scale') v = Number(v);
-    S[key] = v;
-    if(key==='device') S.mockup = 'none';
-    if(key==='layout' && v==='recs') S.sideRecs = true;
-    return full(true);
-  }
-  const swBtn = e.target.closest('.switch');
-  if(swBtn && !swBtn.hasAttribute('disabled')){
-    const k = swBtn.dataset.sw;
-    if(k==='_subscribed') S.video.subscribed = !S.video.subscribed;
-    else if(k==='_macWifi') S.ui.macWifi = !S.ui.macWifi;
-    else S[k] = !S[k];
-    return full();
-  }
-  const col = e.target.closest('[data-col]');
-  if(col){ setColor(col.dataset.col, col.dataset.c); return full(); }
-  const flag = e.target.closest('[data-flag]');
-  if(flag){ const n = getNode(flag.dataset.flag); n[flag.dataset.k] = !n[flag.dataset.k]; return full(); }
-  const rep = e.target.closest('[data-reply]');
-  if(rep){ const n = getNode(rep.dataset.reply); (n.replies=n.replies||[]).push({id:uid(),name:'@새사용자',time:'방금 전',likes:'',text:'답글 내용을 입력하세요',replies:[]}); return full(); }
-  const del = e.target.closest('[data-del]');
-  if(del){ const {arr,i} = getParentArr(del.dataset.del); arr.splice(i,1); return full(); }
-  const mv = e.target.closest('[data-mv]');
-  if(mv){ const {arr,i} = getParentArr(mv.dataset.mv); const j = i + Number(mv.dataset.dir);
-    if(j>=0 && j<arr.length){ const t=arr[i]; arr[i]=arr[j]; arr[j]=t; } return full(); }
-  if(e.target.closest('[data-add="root"]')){ S.comments.push({id:uid(),name:'@새사용자',time:'방금 전',likes:'',text:'댓글 내용을 입력하세요',replies:[]}); return full(); }
-  if(e.target.closest('[data-addrec]')){ S.recs.push({id:uid(),thumb:'',title:'새 추천 영상 제목',ch:'채널명',meta:'1만  1일 전',dur:'10:00'}); return full(); }
-  const dr = e.target.closest('[data-delrec]');
-  if(dr){ S.recs.splice(Number(dr.dataset.delrec),1); return full(); }
-  if(e.target.closest('[data-addtab]')){ S.ui.tabs.push({id:uid(),title:'새 탭',color:'#9AA0A6'}); return full(); }
-  const dt = e.target.closest('[data-deltab]');
-  if(dt){ const i=Number(dt.dataset.deltab); if(S.ui.tabs.length>1){ S.ui.tabs.splice(i,1); if(S.ui.active>=S.ui.tabs.length) S.ui.active=S.ui.tabs.length-1; } return full(); }
-  const ac = e.target.closest('[data-active]');
-  if(ac){ S.ui.active = Number(ac.dataset.active); return full(); }
-  if(e.target.closest('[data-addbmk]')){ S.ui.bmk.push({id:uid(),t:'새 즐겨찾기',c:'#4285F4'}); return full(); }
-  const db = e.target.closest('[data-delbmk]');
-  if(db){ S.ui.bmk.splice(Number(db.dataset.delbmk),1); return full(); }
-  const fxr = e.target.closest('[data-fxreset]');
-  if(fxr){ const fx = getFx(fxr.dataset.fxreset); fx.x=50; fx.y=50; fx.z=100; return full(); }
-  const cic = e.target.closest('[data-cimgclr]');
-  if(cic){ getNode(cic.dataset.cimgclr).avatar = ''; return full(); }
-  const ric = e.target.closest('[data-rimgclr]');
-  if(ric){ S.recs[Number(ric.dataset.rimgclr)].thumb = ''; return full(); }
-  const tic = e.target.closest('[data-tabimgclr]');
-  if(tic){ S.ui.tabs[Number(tic.dataset.tabimgclr)].img = ''; return full(); }
-  const bic = e.target.closest('[data-bmkimgclr]');
-  if(bic){ S.ui.bmk[Number(bic.dataset.bmkimgclr)].img = ''; return full(); }
-  const cl = e.target.closest('[data-clear]');
-  if(cl){ const [a,b] = cl.dataset.clear.split('.'); S[a][b]=''; return full(); }
-  if(e.target.id==='btnPng2') savePNG();
-});
-
-rail.addEventListener('input', e => {
-  const t = e.target;
-  if(t.dataset.poss !== undefined){
-    const total = toSec(S.video.dur) || 1;
-    S.video.cur = fmtSec(total * Number(t.value)/1000);
-    const ti = rail.querySelector('[data-path="video.cur"]'); if(ti) ti.value = S.video.cur;
-    const lbl = t.nextElementSibling; if(lbl) lbl.textContent = Math.round(Number(t.value)/10)+'%';
-    return patchPlayer();
-  }
-  if(t.dataset.path === 'video.cur' || t.dataset.path === 'video.dur'){
-    S.video[t.dataset.path.split('.')[1]] = t.value;
-    syncPosSlider(); return patchPlayer();
-  }
-  if(t.dataset.path){ const [a,b] = t.dataset.path.split('.');
-    S[a][b] = (b==='battery') ? (parseInt(t.value,10)||0) : t.value; return renderPreview(); }
-  if(t.dataset.c){ getNode(t.dataset.c)[t.dataset.f] = t.value; return renderPreview(); }
-  if(t.dataset.r){ S.recs[Number(t.dataset.r)][t.dataset.f] = t.value; return renderPreview(); }
-  if(t.dataset.tab !== undefined && t.dataset.tab !== ''){ S.ui.tabs[Number(t.dataset.tab)].title = t.value; return renderPreview(); }
-  if(t.dataset.tabcol !== undefined && t.dataset.tabcol !== ''){ S.ui.tabs[Number(t.dataset.tabcol)].color = t.value; return renderPreview(); }
-  if(t.dataset.bmk !== undefined && t.dataset.bmk !== ''){ S.ui.bmk[Number(t.dataset.bmk)].t = t.value; return renderPreview(); }
-  if(t.dataset.bmkcol !== undefined && t.dataset.bmkcol !== ''){ S.ui.bmk[Number(t.dataset.bmkcol)].c = t.value; return renderPreview(); }
-  if(t.dataset.colcustom){ setColor(t.dataset.colcustom, t.value); return renderPreview(); }
-  if(t.dataset.fxk){
-    const fx = getFx(t.dataset.fxk);
-    fx[t.dataset.fxp] = Number(t.value);
-    const lbl = t.nextElementSibling;
-    if(lbl) lbl.textContent = t.dataset.fxp==='z' ? t.value+'%' : t.value;
-    return patchFx(t.dataset.fxk);   /* 미리보기 전체를 다시 그리지 않아서 끊기지 않음 */
-  }
-});
-
-rail.addEventListener('change', e => {
-  const t = e.target;
-  if(t.dataset.colcustom){ setColor(t.dataset.colcustom, t.value); return full(); }
-  if(t.type!=='file' || !t.files || !t.files[0]) return;
-  const fr = new FileReader();
-  fr.onload = () => {
-    const url = fr.result;
-    const apply = ar => {
-      let key = '';
-      if(t.dataset.img){ const [a,b]=t.dataset.img.split('.'); S[a][b]=url; key = t.dataset.img; }
-      else if(t.dataset.cimg){ getNode(t.dataset.cimg).avatar = url; key = 'c:'+t.dataset.cimg; }
-      else if(t.dataset.rimg){ S.recs[Number(t.dataset.rimg)].thumb = url; key = 'rec:'+t.dataset.rimg; }
-      else if(t.dataset.tabimg){ S.ui.tabs[Number(t.dataset.tabimg)].img = url; }
-      else if(t.dataset.bmkimg){ S.ui.bmk[Number(t.dataset.bmkimg)].img = url; }
-      if(key){ const h = fxHost(key); if(h && h[0]) h[0][h[1]] = {x:50, y:50, z:100, ar:ar||1}; }
-      full();
+/* A photo straight off a phone is 4000 px wide and several MB as a data URL, which
+   is far more than the mockup can use and enough to make saving fail. Cap it. */
+const MAX_EDGE = 1600;
+async function shrinkImage(dataUrl, keepAlpha){
+  const im = await loadImg(dataUrl);
+  if(!im || !im.naturalWidth) return dataUrl;
+  const long = Math.max(im.naturalWidth, im.naturalHeight);
+  if(long <= MAX_EDGE && dataUrl.length < 900000) return dataUrl;
+  const k = Math.min(1, MAX_EDGE / long);
+  const cv = document.createElement("canvas");
+  cv.width  = Math.round(im.naturalWidth  * k);
+  cv.height = Math.round(im.naturalHeight * k);
+  const cx = cv.getContext("2d");
+  cx.drawImage(im, 0, 0, cv.width, cv.height);
+  try{
+    return keepAlpha ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.9);
+  }catch(e){ return dataUrl; }
+}
+function pickFile(cb){
+  const inp = document.createElement("input");
+  inp.type="file"; inp.accept="image/*";
+  inp.addEventListener("change",()=>{
+    const f = inp.files && inp.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = async ()=>{
+      const keepAlpha = /png|webp|gif/i.test(f.type || "");
+      cb(await shrinkImage(r.result, keepAlpha));
     };
-    const im = new Image();
-    im.onload = () => apply(im.naturalWidth / im.naturalHeight);
-    im.onerror = () => apply(1);
-    im.src = url;
-  };
-  fr.readAsDataURL(t.files[0]);
+    r.readAsDataURL(f);
+  });
+  inp.click();
+}
+function ytId(url){
+  const m = String(url).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
+  if(m) return m[1];
+  const bare = String(url).trim();
+  return /^[A-Za-z0-9_-]{11}$/.test(bare) ? bare : null;
+}
+function loadImg(src){
+  return new Promise(res=>{ const im=new Image(); im.crossOrigin="anonymous";
+    im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; });
+}
+/* Re-encode the thumbnail locally so PNG export never hits a tainted canvas. */
+async function ytThumb(id){
+  for(const name of ["maxresdefault","hqdefault","mqdefault"]){
+    const url = `https://i.ytimg.com/vi/${id}/${name}.jpg`;
+    const im = await loadImg(url);
+    if(im && im.naturalWidth > 8){
+      try{
+        const side = Math.min(im.naturalWidth, im.naturalHeight);
+        const cv = document.createElement("canvas");
+        cv.width = cv.height = Math.min(640, side);
+        const cx = cv.getContext("2d");
+        cx.drawImage(im,(im.naturalWidth-side)/2,(im.naturalHeight-side)/2,side,side,0,0,cv.width,cv.height);
+        return cv.toDataURL("image/jpeg",0.92);
+      }catch(e){ return url; }   /* tainted: fall back to the live URL */
+    }
+  }
+  return null;
+}
+let ytTimer = null;
+function handleYt(target, value, previewEl){
+  const o = targetObj(target);
+  o.yt = value;
+  clearTimeout(ytTimer);
+  const id = ytId(value);
+  if(!value.trim()){ o.img = null; refreshPreview(previewEl,o); renderScreen(); return; }
+  if(!id) return;
+  ytTimer = setTimeout(async ()=>{
+    const src = await ytThumb(id);
+    if(src){ o.img = src; refreshPreview(previewEl,o); renderScreen(); }
+  }, 320);
+}
+function refreshPreview(el,o){
+  if(!el) return;
+  el.style.backgroundImage = o.img ? `url('${o.img}')` : "none";
+  el.style.backgroundColor = o.color;
+}
+
+/* ============================================================
+   8. EVENT WIRING
+   ============================================================ */
+const REPANEL = new Set(["bg.mode","tintMode","act.pillMode","canvas.mode","canvas.fit","canvas.ratio"]);
+const panelBody = document.getElementById("panelBody");
+
+const FAST = new Set(["pl.title","pl.artist","act.label","status.time","mini.title","mini.artist"]);
+
+function readControl(el){
+  const p = el.dataset.b;
+  if(!p) return;
+  let v;
+  if(el.type === "checkbox") v = el.checked;
+  else if(el.dataset.num) v = Number(el.value);
+  else v = el.value;
+  set(p, v);
+  const out = panelBody.querySelector(`[data-out="${p}"]`);
+  if(out){
+    const suffix = out.textContent.replace(/^[\d.-]+/,"");
+    out.textContent = v + suffix;
+  }
+  if(/\.color$/.test(p)){
+    const field = el.closest(".field");
+    const prev = field && field.querySelector(".thumb-prev");
+    if(prev) refreshPreview(prev, targetObj(p.replace(/\.color$/,"")));
+  }
+  /* backdrop sliders never touch the phone itself — update it in place */
+  if(p.startsWith("canvas.") && !REPANEL.has(p)) requestCanvas();
+  else if((p === "pl.size" || p === "pl.radius") && fastCover()) { /* handled in place */ }
+  else requestRender();
+  if(REPANEL.has(p)) renderPanel();
+}
+
+panelBody.addEventListener("input", e=>{
+  const el = e.target;
+  if(el.dataset.b){
+    const p = el.dataset.b;
+    if(el.type === "text" && FAST.has(p)){
+      set(p, el.value);
+      if(fastText(p, el.value)) return;
+    }
+    readControl(el); return;
+  }
+  if(el.dataset.tb !== undefined && el.dataset.si !== undefined){
+    const i = +el.dataset.si, key = el.dataset.tb;
+    const t = state.tracks[i];
+    t[key] = el.value;
+    if(key === "color"){
+      const prev = el.closest(".song-card").querySelector(".thumb-prev");
+      refreshPreview(prev, t);
+      requestRender(); return;
+    }
+    if(fastText(`t${i}.${key}`, el.value)) return;
+    requestRender(); return;
+  }
+  if(el.dataset.ytin !== undefined){
+    const prev = el.closest(".thumb-pick").querySelector(".thumb-prev");
+    handleYt(el.dataset.ytin, el.value, prev); return;
+  }
+});
+panelBody.addEventListener("change", e=>{ if(e.target.dataset.b) readControl(e.target); });
+
+panelBody.addEventListener("click", e=>{
+  const el = e.target.closest("button");
+  if(!el) return;
+
+  /* segmented */
+  const segWrap = el.closest(".segmented");
+  if(segWrap && el.dataset.v !== undefined){
+    set(segWrap.dataset.b, el.dataset.v);
+    segWrap.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", b===el));
+    requestRender();
+    if(REPANEL.has(segWrap.dataset.b)) renderPanel();
+    return;
+  }
+  /* swatch */
+  if(el.dataset.sw){
+    set(el.dataset.sw, el.dataset.c);
+    const inp = panelBody.querySelector(`input[type=color][data-b="${el.dataset.sw}"]`);
+    if(inp) inp.value = el.dataset.c;
+    const card = el.closest(".song-card") || el.closest(".field");
+    const prev = card && card.querySelector(".thumb-prev");
+    if(prev){
+      const base = el.dataset.sw.replace(/\.color$/,"");
+      refreshPreview(prev, targetObj(base));
+    }
+    requestRender(); return;
+  }
+  /* image upload / clear */
+  if(el.dataset.upload){
+    const t = el.dataset.upload;
+    pickFile(async src=>{
+      const o = targetObj(t); o.img = src; o.yt = "";
+      o.imgRev = (o.imgRev || 0) + 1;
+      const im = await loadImg(src);
+      if(im && im.naturalHeight) o.imgAR = im.naturalWidth / im.naturalHeight;
+      renderScreen(); renderPanel();
+    });
+    return;
+  }
+  if(el.dataset.clearimg){
+    const o = targetObj(el.dataset.clearimg); o.img=null; o.yt="";
+    renderScreen(); renderPanel(); return;
+  }
+  /* track actions */
+  if(el.dataset.star !== undefined){
+    const t = state.tracks[+el.dataset.star]; t.star = !t.star;
+    requestRender(); renderSongs(); return;
+  }
+  if(el.dataset.mv !== undefined){
+    const i = +el.dataset.mv, d = +el.dataset.dir, j = i + d;
+    if(j<0 || j>=state.tracks.length) return;
+    [state.tracks[i], state.tracks[j]] = [state.tracks[j], state.tracks[i]];
+    renderScreen(); renderPanel(); return;
+  }
+  if(el.dataset.del !== undefined){
+    state.tracks.splice(+el.dataset.del,1);
+    renderScreen(); renderPanel(); return;
+  }
+  if(el.id === "addSong"){
+    state.tracks.push(newTrack("새로운 곡","아티스트"));
+    renderScreen(); renderPanel();
+    panelBody.querySelector(".song-card:last-child input[data-tb=title]").focus();
+    return;
+  }
+  if(el.id === "exportBtn2"){ exportPng(); return; }
+  if(el.id === "saveJson"){ saveJson(); return; }
+  if(el.id === "loadJson"){ loadJson(); return; }
+  if(el.id === "resetAll"){
+    if(confirm("모든 설정을 기본값으로 되돌릴까요?")){
+      Object.keys(DEFAULTS).forEach(k=>{ state[k] = structuredClone(DEFAULTS[k]); });
+      renderScreen(); renderPanel();
+    }
+    return;
+  }
 });
 
-function full(refit){
-  const open = [...document.querySelectorAll('details.sec')].map(d=>d.open);
-  const sc = rail.scrollTop;
-  renderRail(); renderPreview();
-  document.querySelectorAll('details.sec').forEach((d,i)=>{ if(open[i]!==undefined) d.open = open[i]; });
-  rail.scrollTop = sc;
-  if(refit) setTimeout(fit, 20);
+/* the list changes while the panel is open, so fill this in at the moment it opens */
+function fillMiniFrom(sel){
+  sel.innerHTML = `<option value="">— 선택 —</option>` +
+    state.tracks.map((t,i)=>`<option value="${i}">${i+1}. ${esc(t.title||"제목 없음")}</option>`).join("");
+  sel.value = "";
+}
+panelBody.addEventListener("mousedown", e=>{ if(e.target.id === "miniFrom") fillMiniFrom(e.target); }, true);
+panelBody.addEventListener("focusin",  e=>{ if(e.target.id === "miniFrom") fillMiniFrom(e.target); });
+
+panelBody.addEventListener("change", e=>{
+  if(e.target.id === "miniFrom" && e.target.value !== ""){
+    const t = state.tracks[+e.target.value];
+    Object.assign(state.mini,{title:t.title,artist:t.artist,color:t.color,img:t.img});
+    renderScreen(); renderPanel();
+  }
+});
+
+/* ============================================================
+   9. ZOOM
+   ============================================================ */
+let zoom = 1, autoFit = true;
+const stageEl = document.querySelector(".stage");
+const zoomVal = document.getElementById("zoomVal");
+function applyZoom(){
+  viewport.style.transform = `scale(${zoom})`;
+  /* a transform doesn't shrink the layout box, so the shrunken mockup would still
+     reserve its full width and push the page wider than a phone screen */
+  const el = viewport.firstElementChild;
+  if(el){
+    viewport.style.width  = Math.round(el.offsetWidth  * zoom) + "px";
+    viewport.style.height = Math.round(el.offsetHeight * zoom) + "px";
+  }
+  zoomVal.textContent = Math.round(zoom*100) + "%";
+}
+function fitIfAuto(){
+  if(!autoFit) return;
+  const f = viewport.firstElementChild;
+  if(!f) return;
+  const w = f.offsetWidth, h = f.offsetHeight;
+  if(!w || !h) return;
+  const full = document.body.classList.contains("fullview");
+  /* On a phone the panel stacks underneath, so the stage grows with its content and
+     its own height can't be used to fit against — measure the window instead. */
+  const narrow = window.matchMedia("(max-width:1080px)").matches;
+  const availW = stageEl.clientWidth - (narrow ? 28 : full ? 60 : 80);
+  const vv = window.visualViewport;
+  const availH = narrow ? (vv ? vv.height : window.innerHeight) * 0.70
+                        : stageEl.clientHeight - (full ? 120 : 190);
+  zoom = Math.min(1, availW/w, availH/h);   /* never blow the mockup up past 100 % */
+  applyZoom();
+}
+document.getElementById("zoomIn").onclick = ()=>{ autoFit=false; zoom=Math.min(2,zoom+0.1); applyZoom(); };
+document.getElementById("zoomOut").onclick = ()=>{ autoFit=false; zoom=Math.max(0.15,zoom-0.1); applyZoom(); };
+document.getElementById("zoomFit").onclick = ()=>{ autoFit=true; zoom=1; fitIfAuto(); };
+window.addEventListener("resize", ()=>fitIfAuto());
+
+/* full view */
+const fullBtn = document.getElementById("fullBtn");
+function setFull(on){
+  document.body.classList.toggle("fullview", on);
+  fullBtn.textContent = on ? "나가기" : "전체보기";
+  autoFit = true; requestAnimationFrame(fitIfAuto);
+}
+fullBtn.onclick = ()=> setFull(!document.body.classList.contains("fullview"));
+window.addEventListener("keydown", e=>{
+  if(e.key === "Escape" && document.body.classList.contains("fullview")) setFull(false);
+});
+
+/* editor theme */
+document.getElementById("themeBtn").onclick = ()=>{
+  const r = document.documentElement;
+  const cur = r.getAttribute("data-theme");
+  const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  r.setAttribute("data-theme", cur ? (cur==="dark"?"light":"dark") : (sysDark?"light":"dark"));
+};
+
+/* ============================================================
+   10. EXPORT
+   ============================================================ */
+function download(blobOrUrl, name){
+  const a = document.createElement("a");
+  a.href = typeof blobOrUrl === "string" ? blobOrUrl : URL.createObjectURL(blobOrUrl);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+const exportBtn = document.getElementById("exportBtn");
+/* ── WebKit (Safari, and every browser on iOS) rasterises box-shadow without its
+   blur AND without its border-radius, so shadows come out as hard rectangles.
+   Detect it, then draw the device shadow out of real rounded elements instead. ── */
+let shadowBlurOk = null;
+function looksLikeWebKit(){
+  const ua = navigator.userAgent;
+  if(/iPad|iPhone|iPod/.test(ua)) return true;
+  if(/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return true;   /* iPad desktop mode */
+  return /Safari/.test(ua) && !/Chrome|Chromium|Android|Edg|OPR/.test(ua);
+}
+async function probeShadowBlur(){
+  if(shadowBlurOk !== null) return shadowBlurOk;
+  if(looksLikeWebKit()){ shadowBlurOk = false; return shadowBlurOk; }
+  try{
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">' +
+      '<foreignObject x="0" y="0" width="60" height="60">' +
+      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:60px;height:60px;background:#fff">' +
+      '<div style="width:20px;height:20px;margin:20px;background:#fff;box-shadow:0 0 12px 0 #000"></div>' +
+      '</div></foreignObject></svg>';
+    const img = await loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg));
+    if(!img){ shadowBlurOk = false; return shadowBlurOk; }
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 60;
+    const cx = cv.getContext("2d");
+    cx.fillStyle = "#fff"; cx.fillRect(0,0,60,60);
+    cx.drawImage(img,0,0);
+    /* 5 px outside the inner box: grey means the blur was drawn, white means it was not */
+    shadowBlurOk = cx.getImageData(15,30,1,1).data[0] < 235;
+  }catch(e){ shadowBlurOk = false; }
+  return shadowBlurOk;
+}
+function addRings(wrap, w, h, radius, y, blur, alpha, n){
+  const reach = blur * 0.55;
+  for(let i = n; i >= 1; i--){
+    const f = i/n, e = reach*f, oy = y*f;
+    const ring = document.createElement("div");
+    ring.style.cssText =
+      `position:absolute;left:${-e}px;top:${-e+oy}px;width:${w+2*e}px;height:${h+2*e}px;` +
+      `border-radius:${radius + e}px;background:rgba(0,0,0,${(alpha/n).toFixed(4)});`;
+    wrap.appendChild(ring);
+  }
+}
+/* Give one element a soft shadow made of nested rounded divs, sitting just behind it.
+   Returns the nodes/style changes so the export can undo them afterwards. */
+function attachFauxShadow(el, y, blur, alpha, n = 8, addTo, undo){
+  const parent = el.parentElement;
+  if(!parent) return;
+  const pcs = getComputedStyle(parent);
+  if(pcs.position === "static"){
+    undo.push([parent, "position", parent.style.position]);
+    parent.style.position = "relative";
+  }
+  const cs = getComputedStyle(el);
+  const w = el.offsetWidth, h = el.offsetHeight;
+  const radius = Math.min(parseFloat(cs.borderTopLeftRadius) || 0, Math.min(w, h)/2);
+  const left = el.offsetParent === parent ? el.offsetLeft
+             : el.getBoundingClientRect().left - parent.getBoundingClientRect().left;
+  const top  = el.offsetParent === parent ? el.offsetTop
+             : el.getBoundingClientRect().top  - parent.getBoundingClientRect().top;
+
+  undo.push([el, "position", el.style.position], [el, "zIndex", el.style.zIndex]);
+  if(cs.position === "static") el.style.position = "relative";
+  el.style.zIndex = "1";
+
+  const wrap = document.createElement("div");
+  wrap.style.cssText =
+    `position:absolute;left:${left}px;top:${top}px;` +
+    `width:${w}px;height:${h}px;z-index:0;pointer-events:none;`;
+  addRings(wrap, w, h, radius, y, blur, alpha, n);
+  parent.insertBefore(wrap, el);
+  addTo.push(wrap);
 }
 
-/* 확대 */
-const stageInner = document.getElementById('stageInner');
-const stageBox = document.getElementById('stageBox');
-const zoom = document.getElementById('zoom'), zoomVal = document.getElementById('zoomVal');
-let curScale = 1, natW = 0, natH = 0;
+/* a soft drop shadow built from nested rounded divs — every engine draws these right */
+function buildFauxShadow(frame, radius, y, blur, alpha, n = 10){
+  const wrap = document.createElement("div");
+  const cs = getComputedStyle(frame);
+  wrap.className = "faux-shadow";
+  wrap.style.cssText =
+    `position:absolute;left:${frame.offsetLeft}px;top:${frame.offsetTop}px;` +
+    `width:${frame.offsetWidth}px;height:${frame.offsetHeight}px;z-index:1;pointer-events:none;` +
+    `transform:${cs.transform === "none" ? "" : cs.transform};transform-origin:${cs.transformOrigin};`;
+  addRings(wrap, frame.offsetWidth, frame.offsetHeight, radius, y, blur, alpha, n);
+  return wrap;
+}
 
-function measureStage(){
-  const el = document.getElementById('capture').firstElementChild;
-  if(!el){ natW = natH = 0; return; }
-  const prev = stageInner.style.transform;
-  stageInner.style.transform = 'none';
-  const r = el.getBoundingClientRect();
-  natW = r.width; natH = r.height;
-  stageInner.style.transform = prev;
-  sizeBox();
-}
-function sizeBox(){
-  stageBox.style.width  = Math.max(1, Math.round(natW*curScale))+'px';
-  stageBox.style.height = Math.max(1, Math.round(natH*curScale))+'px';
-}
-function applyZoom(v){
-  curScale = Number(v)/100;
-  stageInner.style.transform = `scale(${curScale})`;
-  zoomVal.textContent = Math.round(Number(v))+'%';
-  sizeBox();
-}
-zoom.addEventListener('input', ()=>applyZoom(zoom.value));
-document.getElementById('btnFit').addEventListener('click', fit);
-function fit(){
-  const stage = document.getElementById('stage');
-  measureStage();
-  if(!natW) return;
-  const narrow = window.innerWidth <= 900;
-  const byW = ((stage.clientWidth - (narrow ? 22 : 70))/natW)*100;
-  const byH = ((window.innerHeight - 150)/natH)*100;
-  const target = Math.max(10, Math.min(130, Math.floor(narrow ? byW : Math.min(byW, byH))));
-  zoom.value = target; applyZoom(target);
-}
-let fitTimer = null;
-window.addEventListener('resize', ()=>{ clearTimeout(fitTimer); fitTimer = setTimeout(fit, 160); });
+async function exportPng(){
+  const live = viewport.querySelector("#canvasEl");
+  if(!live) return;
+  const label = exportBtn.textContent;
+  exportBtn.textContent = "굽는 중…"; exportBtn.disabled = true;
 
-/* PNG 저장 */
-let dlNs = null;
-if(window.claude && typeof claude.use === 'function') claude.use('downloads').then(ns=>{dlNs=ns}).catch(()=>{});
-function freezeScroll(on){
-  document.querySelectorAll('#capture .scrollpane').forEach(el=>{
-    const kid = el.firstElementChild; if(!kid) return;
-    if(on){ el.dataset.st = el.scrollTop; kid.style.marginTop = (-el.scrollTop)+'px'; el.scrollTop = 0; }
-    else { kid.style.marginTop = ''; el.scrollTop = Number(el.dataset.st||0); }
+  /* Everything below happens on a detached COPY. The live preview is never touched,
+     so if the browser suspends the page while handing over the download (iOS does),
+     there is nothing left half-modified on screen. */
+  const holder = document.createElement("div");
+  holder.setAttribute("aria-hidden", "true");
+  holder.style.cssText = "position:fixed;left:-99999px;top:0;width:0;height:0;overflow:visible;pointer-events:none;";
+  const node = live.cloneNode(true);
+  node.removeAttribute("id");
+  node.style.transform = "none";
+  holder.appendChild(node);
+  document.body.appendChild(holder);
+
+  try{
+    /* the clone starts unscrolled — fold the live scroll position into a shift */
+    const liveSc = live.querySelector(".content");
+    const sc = node.querySelector(".content");
+    const st = liveSc ? liveSc.scrollTop : 0;
+    if(st && sc) Array.from(sc.children).forEach(k=>{ k.style.transform = `translateY(${-st}px)`; });
+
+    const flat = state.exportFlat === "on" ? true
+               : state.exportFlat === "off" ? false
+               : !(await probeShadowBlur());
+    if(flat && state.shadows){
+      const P = palette();
+      const junk = [], bin = [];
+      const barY = 6, barBlur = P.light ? 24 : 22, barA = P.light ? .24 : .13;
+      node.querySelectorAll(".mini,.tabbar,.tab-search,.play-pill").forEach(el=>{
+        el.style.boxShadow = "none";
+        attachFauxShadow(el, barY, barBlur, barA, 8, junk, bin);
+      });
+      node.querySelectorAll(".cover").forEach(el=>{
+        el.style.boxShadow = "none";
+        attachFauxShadow(el, 10, 26, .26, 8, junk, bin);
+      });
+      const frame = node.querySelector(".frame");
+      if(frame){
+        frame.style.setProperty("--dev-shadow", "none");
+        const sh = state.canvas.shadow;
+        if(sh > 0){
+          const radius = state.frameOn ? DEVICES[state.device].br : outerRadius();
+          node.insertBefore(buildFauxShadow(frame, radius, 10 + sh*0.42, 24 + sh*0.85, 0.06 + sh*0.0035), frame);
+        }
+      }
+    }
+
+    const blob = await htmlToImage.toBlob(node, {
+      pixelRatio: 3,
+      skipFonts: true,          /* the mockup uses system faces; don't stall on webfonts */
+      cacheBust: false,
+      width: node.offsetWidth,
+      height: node.offsetHeight
+    });
+    if(!blob) throw new Error("empty blob");
+    const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,"");
+    download(blob, `apple-music-${stamp}.png`);
+  }catch(err){
+    alert("이미지로 굽는 데 실패했어요. 사진이 아주 크면 실패할 수 있어요 — 조금 작은 사진으로 다시 시도해 보세요.");
+    console.error(err);
+  }finally{
+    holder.remove();
+    exportBtn.textContent = label; exportBtn.disabled = false;
+  }
+}
+exportBtn.onclick = exportPng;
+
+/* keys the saved file doesn't know about keep their current default */
+function mergeDefaults(val, def){
+  if(Array.isArray(def)) return Array.isArray(val) ? val : def;
+  if(def && typeof def === "object"){
+    const out = {};
+    Object.keys(def).forEach(k => out[k] = mergeDefaults(val ? val[k] : undefined, def[k]));
+    if(val && typeof val === "object")
+      Object.keys(val).forEach(k => { if(!(k in out)) out[k] = val[k]; });
+    return out;
+  }
+  return (val === undefined || val === null) ? def : val;
+}
+function saveJson(){
+  const blob = new Blob([JSON.stringify({_v:2, ...state},null,2)],{type:"application/json"});
+  download(blob, "apple-music-maker.json");
+}
+function loadJson(){
+  const inp = document.createElement("input");
+  inp.type="file"; inp.accept="application/json,.json";
+  inp.addEventListener("change",()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const data = JSON.parse(r.result);
+        const merged = structuredClone(mergeDefaults(data, DEFAULTS));
+        merged.tracks = (Array.isArray(data.tracks) && data.tracks.length ? data.tracks : DEFAULTS.tracks)
+          .map(t => Object.assign(newTrack(), t));
+        Object.keys(DEFAULTS).forEach(k=>{ state[k] = merged[k]; });
+        renderScreen(); renderPanel();
+      }catch(e){ alert("설정 파일을 읽지 못했어요. 이 도구에서 저장한 .json인지 확인해 주세요."); }
+    };
+    r.readAsText(f);
   });
+  inp.click();
 }
-function fallbackSave(cv, name){
-  cv.toBlob(blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.download = name; a.href = url; a.click();
-    setTimeout(()=>URL.revokeObjectURL(url), 4000);
-  }, 'image/png');
-}
-function savePNG(){
-  const node = document.getElementById('capture');
-  const prev = stageInner.style.transform;
-  const name = `youtube-comment-${S.device}-${S.theme}.png`;
-  stageInner.style.transform = 'scale(1)';
-  freezeScroll(true);
-  html2canvas(node, {backgroundColor:null, scale:S._scale||3, useCORS:true, allowTaint:true, imageTimeout:0, logging:false}).then(cv=>{
-    freezeScroll(false); stageInner.style.transform = prev; sizeBox();
-    if(dlNs) cv.toBlob(blob => { dlNs.save({filename:name, data:blob}).catch(err=>{ if(!err||err.code!=='declined') fallbackSave(cv,name); }); }, 'image/png');
-    else fallbackSave(cv, name);
-  }).catch(()=>{ freezeScroll(false); stageInner.style.transform = prev; sizeBox(); });
-}
-document.getElementById('btnPng').addEventListener('click', savePNG);
-document.getElementById('btnReset').addEventListener('click', ()=>{ const sc=S._scale; S = defaultState(); S._scale=sc; full(true); });
 
-renderRail(); renderPreview(); setTimeout(fit, 60);
+/* ============================================================
+   11. BOOT
+   ============================================================ */
+const DEFAULTS = structuredClone(state);
+renderScreen();
+renderPanel();
+requestAnimationFrame(()=>fitIfAuto());
 </script>
 
 </body>
