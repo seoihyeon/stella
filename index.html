@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>유튜브 댓글창 메이커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Noto+Sans+KR:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ============ 앱 셸 토큰 ============ */
+:root{
+  --app-bg:#efece8; --stage:#e5e1dc; --panel:#fbfaf9; --panel-2:#f2efec;
+  --line:#ddd7d1; --line-soft:#e8e3de;
+  --ink:#1b1917; --ink-2:#6d655e; --ink-3:#9a938b;
+  --accent:#c8322f; --accent-ink:#ffffff; --accent-soft:#f7e4e3; --focus:#c8322f;
+  --shadow:0 1px 2px rgba(40,30,25,.08), 0 8px 24px rgba(40,30,25,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --app-bg:#141312; --stage:#0e0d0d; --panel:#1d1b1a; --panel-2:#232120;
+    --line:#332f2d; --line-soft:#282524;
+    --ink:#f2eeea; --ink-2:#a49b93; --ink-3:#7b736c;
+    --accent:#f0605c; --accent-ink:#241110; --accent-soft:#33201f; --focus:#f0605c;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --app-bg:#141312; --stage:#0e0d0d; --panel:#1d1b1a; --panel-2:#232120;
+  --line:#332f2d; --line-soft:#282524;
+  --ink:#f2eeea; --ink-2:#a49b93; --ink-3:#7b736c;
+  --accent:#f0605c; --accent-ink:#241110; --accent-soft:#33201f; --focus:#f0605c;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--app-bg); color:var(--ink);
+  font-family:"Noto Sans KR","Roboto",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+  font-size:13px; -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:4px}
+
+.app{display:grid; grid-template-columns:352px 1fr; height:100vh; min-height:600px}
+.rail{background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0}
+.rail-head{padding:16px 18px 14px; border-bottom:1px solid var(--line-soft); display:flex; align-items:baseline; gap:9px; flex-wrap:wrap}
+.brand{font-family:"Archivo","Noto Sans KR",sans-serif; font-weight:700; font-size:19px; letter-spacing:-.02em; margin:0}
+.brand em{font-style:normal; color:var(--accent)}
+.brand-sub{font-size:11px; color:var(--ink-3)}
+.rail-body{overflow-y:auto; flex:1; padding-bottom:70px}
+.rail-foot{border-top:1px solid var(--line); padding:12px 14px; display:flex; gap:8px; background:var(--panel)}
+
+.stage{
+  background:var(--stage); position:relative; overflow:auto;
+  background-image:radial-gradient(rgba(128,120,112,.28) 1px, transparent 1px);
+  background-size:22px 22px;
+  display:flex; align-items:flex-start; justify-content:center; padding:44px 32px 96px;
+}
+.stage-inner{transform-origin:top center; color:var(--ink)}
+.zoombar{
+  position:fixed; right:22px; bottom:20px; z-index:20; display:flex; align-items:center; gap:10px;
+  background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:7px 14px;
+  box-shadow:var(--shadow); font-size:12px;
+}
+.zoombar input[type=range]{width:100px; accent-color:var(--accent)}
+.zoomval{font-variant-numeric:tabular-nums; color:var(--ink-2); min-width:38px; text-align:right}
+
+details.sec{border-bottom:1px solid var(--line-soft)}
+details.sec > summary{list-style:none; cursor:pointer; padding:13px 18px; display:flex; align-items:center; gap:9px; font-weight:700; font-size:12.5px; user-select:none}
+details.sec > summary::-webkit-details-marker{display:none}
+details.sec > summary:hover{background:var(--panel-2)}
+.sec-num{font-family:"Archivo",sans-serif; font-size:10px; color:var(--ink-3); border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-variant-numeric:tabular-nums}
+.sec-chev{margin-left:auto; color:var(--ink-3); transition:transform .18s ease}
+details[open] > summary .sec-chev{transform:rotate(90deg)}
+.sec-body{padding:2px 18px 18px; display:flex; flex-direction:column; gap:13px}
+
+.field{display:flex; flex-direction:column; gap:6px}
+.field > label, .flabel{font-size:11px; color:var(--ink-2); font-weight:500}
+input[type=text], textarea, select{
+  width:100%; background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
+  border-radius:8px; padding:8px 10px; font:inherit; font-size:12.5px;
+}
+textarea{resize:vertical; line-height:1.5; min-height:56px}
+input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px}
+
+.segs{display:flex; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:3px; gap:3px}
+.segs.col{flex-direction:column}
+.segs button{flex:1; border:0; background:transparent; color:var(--ink-2); padding:7px 4px; border-radius:6px; font-size:12px; font-weight:500; cursor:pointer}
+.segs button:hover{color:var(--ink)}
+.segs button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
+
+.switch{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel-2); cursor:pointer; font-size:12.5px; font-weight:500; color:var(--ink)}
+.switch .track{width:36px; height:20px; border-radius:999px; background:var(--line); position:relative; flex:none; transition:background .16s ease}
+.switch .track::after{content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .16s ease; box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch[aria-pressed="true"] .track{background:var(--accent)}
+.switch[aria-pressed="true"] .track::after{transform:translateX(16px)}
+.switch[disabled]{opacity:.42; cursor:not-allowed}
+
+.btn{border:1px solid var(--line); background:var(--panel-2); color:var(--ink); border-radius:8px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.wide{width:100%}
+.btn.mini{padding:4px 8px; font-size:11px; border-radius:6px}
+
+.filepick{display:flex; align-items:center; gap:8px; border:1px dashed var(--line); border-radius:9px; padding:8px 10px; background:var(--panel-2)}
+.filepick .thumb{width:44px; height:26px; border-radius:4px; flex:none; background:var(--line); background-size:cover; background-position:center}
+.filepick .thumb.circle{width:28px; height:28px; border-radius:50%}
+.filepick input[type=file]{display:none}
+.filepick .pk{font-size:11px; color:var(--ink-2); cursor:pointer; text-decoration:underline; text-underline-offset:2px}
+.hint{font-size:11px; color:var(--ink-3); line-height:1.55; margin:0}
+.fxbox{display:flex; flex-direction:column; gap:5px; border:1px solid var(--line); border-radius:9px; padding:8px 10px; background:var(--panel-2)}
+.fxrow{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--ink-2)}
+.fxrow > span{width:28px; flex:none}
+.fxrow input[type=range]{flex:1; accent-color:var(--accent); height:16px}
+.fxrow b{font-variant-numeric:tabular-nums; width:34px; text-align:right; font-weight:500; color:var(--ink-3)}
+
+/* 색상 팔레트 */
+.pal{display:flex; flex-wrap:wrap; gap:4px; align-items:center}
+.pal b{width:17px; height:17px; border-radius:50%; cursor:pointer; display:block; border:2px solid transparent}
+.pal b[aria-pressed="true"]{border-color:var(--ink); box-shadow:0 0 0 2px var(--panel) inset}
+.pal input[type=color]{width:22px; height:22px; padding:0; border:1px solid var(--line); border-radius:5px; background:none; cursor:pointer}
+
+.cnode{border:1px solid var(--line); border-radius:10px; background:var(--panel-2); padding:10px; display:flex; flex-direction:column; gap:8px}
+.cnode.lv1{background:transparent}
+.cnode-kids{margin-left:12px; padding-left:11px; border-left:2px solid var(--line); display:flex; flex-direction:column; gap:9px; margin-top:2px}
+.cnode-head{display:flex; align-items:center; gap:7px}
+.depth-tag{font-size:9.5px; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:4px; padding:2px 5px; flex:none}
+.cnode-head .sp{margin-left:auto; display:flex; gap:4px}
+.iconbtn{border:1px solid var(--line); background:var(--panel); color:var(--ink-2); width:24px; height:24px; border-radius:6px; cursor:pointer; font-size:11px; display:grid; place-items:center; padding:0; line-height:1}
+.iconbtn:hover{color:var(--ink); border-color:var(--ink-3)}
+.iconbtn.del:hover{color:var(--accent); border-color:var(--accent)}
+.chips{display:flex; flex-wrap:wrap; gap:5px}
+.chip{border:1px solid var(--line); background:var(--panel); color:var(--ink-2); border-radius:999px; padding:4px 9px; font-size:10.5px; font-weight:600; cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent)}
+.listitem{border:1px solid var(--line); border-radius:10px; padding:9px; display:flex; flex-direction:column; gap:7px; background:var(--panel-2)}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr; grid-template-rows:1fr auto; height:auto}
+  .rail{order:2; border-right:0; border-top:1px solid var(--line)}
+  .rail-body{overflow:visible}
+  .stage{order:1; min-height:60vh; padding:24px 12px 40px}
+  .zoombar{position:sticky; bottom:auto; right:auto; margin:0 auto}
+}
+
+/* ================================================================
+   유튜브 리플리카
+   ================================================================ */
+.yt{
+  --bg:#0f0f0f; --tx:#f1f1f1; --tx2:#aaaaaa; --chip:#272727; --chip2:#3f3f3f;
+  --bd:#303030; --input:#121212; --blue:#3ea6ff; --icon:#f1f1f1; --sheet:#212121;
+  font-family:"Roboto","Noto Sans KR",Arial,sans-serif; background:var(--bg); color:var(--tx);
+}
+.yt[data-t="light"]{
+  --bg:#ffffff; --tx:#0f0f0f; --tx2:#606060; --chip:#f2f2f2; --chip2:#e5e5e5;
+  --bd:#e5e5e5; --input:#ffffff; --blue:#065fd4; --icon:#0f0f0f; --sheet:#ffffff;
+}
+.scrollpane{overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none}
+.scrollpane::-webkit-scrollbar{display:none}
+
+.pc-screen{background:var(--bg); overflow:hidden; display:flex; flex-direction:column; position:relative}
+.macbar{height:28px; flex:none; background:linear-gradient(#f6f6f7,#eeeef0); color:#1c1c1e; display:flex; align-items:center; gap:19px; padding:0 15px; font-size:13px; font-weight:400; letter-spacing:-.1px; white-space:nowrap; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif; border-bottom:1px solid rgba(0,0,0,.09)}
+.macbar.dark{background:linear-gradient(#232326,#1d1d20); color:#f2f2f4; border-bottom-color:rgba(255,255,255,.09)}
+.macbar b{font-weight:600}
+.macbar .mright{margin-left:auto; display:flex; align-items:center; gap:14px; font-size:13px}
+.chrome{background:#dee1e6; padding-top:9px; flex:none}
+.chrome.dark{background:#202124}
+.chrome-tabs{display:flex; align-items:flex-end; padding:0 9px}
+.lights{display:flex; gap:8px; align-items:center; padding:0 12px 8px 4px}
+.lights i{width:12px; height:12px; border-radius:50%; display:block}
+.tabstrip{display:flex; align-items:flex-end; flex:1; min-width:0; overflow:hidden}
+.tab{height:34px; flex:1 1 244px; max-width:244px; min-width:54px; border-radius:9px 9px 0 0; display:flex; align-items:center; gap:7px; padding:0 10px; font-size:12px; color:#3c4043; background:transparent; overflow:hidden; white-space:nowrap}
+.chrome.dark .tab{color:#c8ccd0}
+.tab.active{background:#fff; color:#202124}
+.chrome.dark .tab.active{background:#35363a; color:#e8eaed}
+.tab .fav{width:15px; height:15px; border-radius:3px; flex:none; background-size:cover; background-position:center}
+.tab .tt{overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0}
+.tab .xx{opacity:.55; flex:none; font-size:13px}
+.newtab{width:32px; height:32px; display:grid; place-items:center; flex:none; color:#5f6368; font-size:17px; margin-bottom:2px}
+.chrome.dark .newtab{color:#9aa0a6}
+.bmarks i{background-size:cover; background-position:center}
+.chrome-bar{background:#fff; padding:6px 10px; display:flex; align-items:center; gap:8px}
+.chrome.dark .chrome-bar{background:#35363a}
+.chrome-bar .nav{display:flex; gap:2px; color:#5f6368; align-items:center}
+.chrome.dark .chrome-bar .nav{color:#9aa0a6}
+.navbtn{width:30px; height:30px; border-radius:50%; display:grid; place-items:center; flex:none}
+.navbtn.off{opacity:.38}
+.omni{flex:1; height:30px; border-radius:999px; background:#f1f3f4; display:flex; align-items:center; gap:9px; padding:0 13px; font-size:12.5px; color:#202124; overflow:hidden; white-space:nowrap}
+.chrome.dark .omni{background:#202124; color:#e8eaed}
+.bmarks{background:#fff; display:flex; align-items:center; gap:16px; padding:5px 12px 7px; font-size:11.5px; color:#3c4043; white-space:nowrap; overflow:hidden}
+.chrome.dark .bmarks{background:#35363a; color:#c8ccd0}
+.bmarks span{display:flex; align-items:center; gap:5px}
+.bmarks i{width:14px; height:14px; border-radius:3px; display:block; flex:none}
+
+.yt-page{flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg)}
+.yt-head{height:56px; flex:none; display:flex; align-items:center; gap:16px; padding:0 16px; background:var(--bg)}
+.yt-logo{display:flex; align-items:center; gap:5px}
+.yt-search{flex:1; display:flex; justify-content:center; align-items:center; max-width:730px; margin:0 auto}
+.sbox{flex:1; height:40px; border:1px solid var(--bd); border-radius:999px 0 0 999px; display:flex; align-items:center; padding:0 16px; gap:10px; background:var(--input); font-size:16px; color:var(--tx); max-width:540px}
+.sbtn{width:64px; height:40px; border:1px solid var(--bd); border-left:0; background:var(--chip); border-radius:0 999px 999px 0; display:grid; place-items:center; flex:none}
+.micbtn{width:40px; height:40px; border-radius:50%; background:var(--chip); display:grid; place-items:center; flex:none; margin-left:8px}
+.yt-head-right{display:flex; align-items:center; gap:10px; margin-left:auto}
+.create-btn{height:36px; border-radius:999px; background:var(--chip); display:flex; align-items:center; gap:6px; padding:0 15px; font-size:14px; font-weight:500}
+.bell{position:relative; width:40px; height:40px; display:grid; place-items:center}
+.bell .badge{position:absolute; top:2px; right:2px; background:#e53935; color:#fff; font-size:9px; font-weight:700; border-radius:999px; padding:1px 4px; line-height:1.3}
+.avatar{border-radius:50%; background-size:cover; background-position:center; flex:none; display:grid; place-items:center; color:#fff; font-weight:500; overflow:hidden}
+
+.yt-body{flex:1; min-height:0; display:flex; gap:24px; padding:24px; align-items:stretch}
+.yt-main{flex:1; min-width:0; display:flex; flex-direction:column; min-height:0}
+.yt-side{width:402px; flex:none; display:flex; flex-direction:column; gap:8px; min-height:0}
+.player{width:100%; height:0; padding-top:56.25%; border-radius:12px; background:#000; background-size:cover; background-position:center; position:relative; overflow:hidden; flex:none}
+.player .dur{position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; border-radius:4px; padding:2px 4px}
+
+/* 유튜브 플레이어 컨트롤 */
+.pl-ui{position:absolute; left:0; right:0; bottom:0; padding:0 12px 4px; color:#fff;
+  background:linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.55) 60%, rgba(0,0,0,.72))}
+.pl-track{position:relative; height:3px; background:rgba(255,255,255,.28); margin-bottom:5px}
+.pl-buffer{position:absolute; left:0; top:0; bottom:0; background:rgba(255,255,255,.45)}
+.pl-played{position:absolute; left:0; top:0; bottom:0; background:#ff0000; z-index:2}
+.pl-dot{position:absolute; top:50%; width:13px; height:13px; border-radius:50%; background:#ff0000; transform:translate(-50%,-50%); z-index:3}
+.pl-row{display:flex; align-items:center; height:42px}
+.pl-btn{width:36px; height:36px; display:grid; place-items:center; flex:none}
+.pl-time{font-size:13px; margin-left:10px; letter-spacing:.2px; font-variant-numeric:tabular-nums; white-space:nowrap}
+.pl-right{margin-left:auto; display:flex; align-items:center}
+.pl-hd{position:relative}
+.pl-hd i{position:absolute; top:3px; right:2px; background:#ff0000; color:#fff; font-size:7px; font-weight:700; border-radius:2px; padding:0 2px; line-height:1.4; font-style:normal; letter-spacing:.2px}
+.pl-m{position:absolute; inset:0; background:rgba(0,0,0,.22)}
+.pl-mbtn{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:52px; height:52px; color:#fff; display:grid; place-items:center}
+.pl-mtrack{position:absolute; left:12px; right:12px; bottom:11px; height:3px; background:rgba(255,255,255,.3)}
+.pl-mplayed{position:absolute; left:0; top:0; bottom:0; background:#ff0000}
+.pl-mdot{position:absolute; top:50%; width:12px; height:12px; border-radius:50%; background:#ff0000; transform:translate(-50%,-50%)}
+.vtitle{font-size:20px; font-weight:700; line-height:28px; margin:12px 0 0; color:var(--tx)}
+.vmeta{display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap}
+.vchan{display:flex; align-items:center; gap:12px}
+.vchan .nm{font-size:16px; font-weight:500; line-height:1.4}
+.vchan .subs{font-size:12px; color:var(--tx2)}
+.subbtn{height:36px; border-radius:999px; padding:0 16px; display:flex; align-items:center; font-size:14px; font-weight:500; background:var(--tx); color:var(--bg)}
+.subbtn.on{background:var(--chip); color:var(--tx)}
+.vactions{display:flex; gap:8px; margin-left:auto; flex-wrap:wrap}
+.pill{height:36px; border-radius:999px; background:var(--chip); display:flex; align-items:center; gap:7px; padding:0 14px; font-size:14px; font-weight:500}
+.pill .sep{width:1px; height:22px; background:var(--chip2)}
+.vdesc{margin-top:12px; background:var(--chip); border-radius:12px; padding:12px; font-size:14px; line-height:20px; flex:none}
+
+.cm-head{display:flex; align-items:center; gap:32px; margin:22px 0 20px; flex:none}
+.cm-count{font-size:20px; font-weight:700}
+.cm-sort{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500}
+.cm-add{display:flex; align-items:center; gap:16px; margin-bottom:26px; flex:none}
+.cm-add .ln{flex:1; border-bottom:1px solid var(--bd); padding-bottom:7px; color:var(--tx2); font-size:14px}
+.cm-list{display:flex; flex-direction:column; gap:16px; padding-bottom:8px}
+.cm{display:flex; gap:16px}
+.cm .body{flex:1; min-width:0}
+.cm-top{display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:2px}
+.pinrow{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--tx2); margin-bottom:6px; font-weight:500}
+.cm-name{font-size:13px; font-weight:500; line-height:18px}
+.cm-name.owner{background:var(--chip); border-radius:999px; padding:2px 7px}
+.cm-time{font-size:12px; color:var(--tx2)}
+.cm-text{font-size:14px; line-height:20px; white-space:pre-wrap; word-break:break-word}
+.cm-more{font-size:14px; color:var(--tx2); margin-top:2px}
+.cm-acts{display:flex; align-items:center; gap:8px; margin-top:6px; color:var(--tx2); font-size:12px}
+.cm-acts .lk{display:flex; align-items:center; gap:6px}
+.cm-acts .reply{font-size:12px; font-weight:500; color:var(--tx); padding:0 8px; height:32px; display:flex; align-items:center; border-radius:999px}
+.heart-wrap{position:relative; width:22px; height:22px; margin-left:2px}
+.heart-wrap .ha{position:absolute; inset:0; border-radius:50%; background-size:cover; background-position:center}
+.heart-wrap .hh{position:absolute; right:-4px; bottom:-4px; font-size:11px}
+.replies{margin-top:14px; display:flex; flex-direction:column; gap:14px}
+.replies.thread{border-left:2px solid var(--bd); padding-left:14px}
+.toggle-replies{display:flex; align-items:center; gap:8px; color:var(--blue); font-size:14px; font-weight:500; margin-top:10px}
+.badge-19{width:16px; height:16px; border-radius:50%; background:#e53935; color:#fff; font-size:8px; font-weight:700; display:grid; place-items:center; flex:none}
+
+.rec{display:flex; gap:8px; flex:none}
+.rec .th{width:168px; height:94px; border-radius:8px; flex:none; background-size:cover; background-position:center; position:relative; overflow:hidden}
+.rec .th .d{position:absolute; right:4px; bottom:4px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; padding:1px 4px; border-radius:4px}
+.rec .info{flex:1; min-width:0; padding-right:20px}
+.rec .rt{font-size:14px; font-weight:500; line-height:20px; max-height:40px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
+.rec .rc{font-size:12px; color:var(--tx2); margin-top:5px; line-height:18px}
+
+/* ================ 모바일 ================ */
+.mb-screen{background:var(--bg); overflow:hidden; display:flex; flex-direction:column; position:relative}
+.mb-status{flex:none; display:flex; align-items:center; justify-content:space-between; padding:20px 30px 8px 36px; background:#000; color:#fff; font-size:17px; font-weight:600; font-family:-apple-system,"Roboto",sans-serif}
+.mb-status .rr{display:flex; align-items:center; gap:7px}
+.mb-player{width:100%; height:0; padding-top:56.25%; background:#000; background-size:cover; background-position:center; flex:none; position:relative; overflow:hidden}
+.mb-scroll{flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg)}
+.mb-vtitle{font-size:16px; font-weight:600; line-height:22px; padding:12px 12px 0}
+.mb-vmeta{font-size:12px; color:var(--tx2); padding:4px 12px 0; line-height:18px; display:flex; gap:6px; flex-wrap:wrap}
+.mb-vmeta .more{color:var(--tx); font-weight:500}
+.mb-chanrow{display:flex; align-items:center; gap:10px; padding:12px}
+.mb-act{height:34px; border-radius:999px; background:var(--chip); display:flex; align-items:center; gap:6px; padding:0 14px; font-size:13px; font-weight:600}
+.mb-cmcard{margin:0 12px 14px; background:var(--chip); border-radius:12px; padding:12px; flex:none}
+.mb-cmcard .h{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; margin-bottom:8px}
+.mb-cmcard .h .n{font-size:12px; color:var(--tx2); font-weight:400}
+.mb-cmcard .p{display:flex; gap:8px; font-size:13px; line-height:18px}
+.mb-rec{padding:0 0 14px; flex:none}
+.mb-rec .thumb{width:100%; height:0; padding-top:56.25%; background-size:cover; background-position:center; position:relative}
+.mb-rec .thumb .d{position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; padding:2px 4px; border-radius:4px}
+.mb-rec .meta{display:flex; gap:12px; padding:12px 12px 0}
+.mb-rec .rt{font-size:14px; font-weight:500; line-height:20px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.mb-rec .rc{font-size:12px; color:var(--tx2); margin-top:4px}
+
+.mb-sheet{background:var(--sheet); border-radius:14px 14px 0 0; flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden}
+.mb-sheet.full{border-radius:0}
+.mb-grab{width:36px; height:4px; border-radius:999px; background:var(--tx2); opacity:.5; margin:8px auto 4px; flex:none}
+.mb-sheet-head{display:flex; align-items:center; gap:10px; padding:8px 16px 12px; flex:none}
+.mb-sheet-head .t{font-size:16px; font-weight:600}
+.mb-sheet-head .sp{margin-left:auto; display:flex; gap:16px; align-items:center; color:var(--tx)}
+.mb-sortchips{display:flex; gap:8px; padding:0 16px 12px; flex:none}
+.mb-sortchip{height:32px; border-radius:999px; background:var(--chip); display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:500}
+.mb-sortchip.on{background:var(--tx); color:var(--bg)}
+.mb-guide{padding:0 16px 14px; font-size:12px; line-height:18px; color:var(--tx2); flex:none}
+.mb-cmlist{flex:1; min-height:0; padding:0 16px}
+.mb-cmlist .spin{display:flex; flex-direction:column; gap:18px; padding-bottom:10px}
+.mb-input{display:flex; align-items:center; gap:10px; padding:10px 12px 6px; border-top:1px solid var(--bd); flex:none}
+.mb-input .box{flex:1; height:38px; border-radius:999px; background:var(--chip); display:flex; align-items:center; padding:0 14px; color:var(--tx2); font-size:13px}
+.mb-input .circ{width:34px; height:34px; border-radius:50%; background:var(--chip); display:grid; place-items:center; flex:none; font-size:15px}
+.mb-home{width:145px; height:5px; border-radius:999px; background:var(--tx); opacity:.9; margin:8px auto 9px; flex:none}
+
+.mb .cm{gap:12px}
+.mb .cm-name{font-size:12px; color:var(--tx2)}
+.mb .cm-text{font-size:13.5px; line-height:19px}
+.mb .replies{margin-top:12px}
+.mb .replies.thread{padding-left:10px}
+.mb .toggle-replies{font-size:13px}
+
+/* ================ 목업 ================ */
+.mockcol{display:flex; flex-direction:column; align-items:center}
+.lid{background:#181819; border-radius:22px; padding:12px; position:relative; box-shadow:0 22px 60px rgba(0,0,0,.35)}
+.lid .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:19px; background:#181819; border-radius:0 0 12px 12px; z-index:3}
+.lid .inner{border-radius:10px; overflow:hidden; background:#000}
+.lid-base{width:116%; height:15px; background:linear-gradient(#c8ccd2,#9ea3ab); border-radius:0 0 14px 14px; position:relative}
+.lid-base::after{content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:130px; height:8px; background:#8d929a; border-radius:0 0 8px 8px}
+.imac-body{background:#e9eaec; border-radius:20px; padding:16px 16px 0; display:flex; flex-direction:column; align-items:center; box-shadow:0 22px 60px rgba(0,0,0,.3)}
+.imac-body .inner{border-radius:6px; overflow:hidden; background:#000}
+.imac-chin{height:78px; display:grid; place-items:center; width:100%}
+.imac-neck{width:132px; height:92px; background:linear-gradient(90deg,#c9ccd1,#e6e8ea 30%,#d4d7db)}
+.imac-foot{width:420px; height:14px; border-radius:0 0 10px 10px; background:linear-gradient(#d9dcdf,#b9bdc3)}
+.iph-body{background:#22242a; border-radius:66px; padding:11px; position:relative; box-shadow:0 26px 70px rgba(0,0,0,.45)}
+.iph-body::before{content:""; position:absolute; inset:2px; border-radius:64px; border:2px solid #6f7480; pointer-events:none}
+.iph-body .inner{border-radius:55px; overflow:hidden; position:relative; background:#000}
+.iph-island{position:absolute; top:24px; left:50%; transform:translateX(-50%); width:126px; height:37px; background:#000; border-radius:999px; z-index:5}
+.plain-shadow{box-shadow:0 12px 44px rgba(0,0,0,.2)}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="rail-head">
+      <h1 class="brand">댓글창 <em>메이커</em></h1>
+      <span class="brand-sub">YouTube comment mockup</span>
+    </div>
+    <div class="rail-body" id="rail"></div>
+    <div class="rail-foot">
+      <button class="btn wide primary" id="btnPng">PNG로 저장</button>
+      <button class="btn" id="btnReset">초기화</button>
+    </div>
+  </aside>
+  <main class="stage" id="stage">
+    <div class="stage-inner" id="stageInner"><div id="capture"></div></div>
+  </main>
+</div>
+<div class="zoombar">
+  <span style="color:var(--ink-2)">확대</span>
+  <input type="range" id="zoom" min="15" max="130" value="60">
+  <span class="zoomval" id="zoomVal">60%</span>
+  <button class="btn mini" id="btnFit">맞춤</button>
+</div>
+
+<script>
+/* ===================== 상수 ===================== */
+const uid = () => Math.random().toString(36).slice(2, 9);
+/* 유튜브 기본 프로필 배경색 팔레트 */
+const YT_COLORS = ['#F44336','#E91E63','#9C27B0','#673AB7','#3F51B5','#2196F3','#03A9F4','#00BCD4',
+                   '#009688','#4CAF50','#8BC34A','#FFC107','#FF9800','#FF5722','#795548','#607D8B'];
+const RATIOS = { '16:9':[1280,720], '16:10':[1280,800], '4:3':[1280,960], '9:16':[720,1280], 'auto':[1280,null] };
+const PHONE = [440, 956]; /* iPhone 16 Pro Max */
+
+/* ===================== 기본 상태 ===================== */
+function defaultState(){
+  return {
+    device:'pc', theme:'light', layout:'comments', sideRecs:true, ratio:'16:9',
+    ytHeader:true, browser:true, macbar:true, bookmarks:true, mockup:'none',
+    ui:{
+      search:'앰버라인 다섯 사람의 밤',
+      count:'댓글 128개', sort:'정렬 기준',
+      time:'2:14', battery:78,
+      url:'youtu.be/Engy-C6FHOs?si=pRHb_PxOfwaBqK74',
+      macApp:'Chrome',
+      macMenus:'파일, 수정, 보기, 방문 기록, 북마크, 프로필, 탭, 창, 도움말',
+      macTime:'9월 2일 (수) 오후 2:14',
+      macWifi:true,
+      tabs:[{id:uid(), title:'다섯 사람의 밤 - YouTube', color:'#FF0000'}],
+      active:0,
+      bmk:[{id:uid(),t:'YouTube',c:'#FF0000'},{id:uid(),t:'Gmail',c:'#EA4335'},
+           {id:uid(),t:'지도',c:'#34A853'},{id:uid(),t:'뉴스',c:'#4285F4'},{id:uid(),t:'번역',c:'#00BCD4'}]
+    },
+    video:{
+      thumb:'', title:'다섯 사람의 밤 | 이현 · 스텔라 · 겐조 · 류 · 루시아',
+      channel:'앰버라인', handle:'@amberline', avatar:'', color:'#FF9800',
+      subs:'구독자 12.4만명', likes:'3.1천', views:'조회수 42만회', when:'3일 전',
+      dur:'18:24', cur:'6:12', playerUI:'controls', playing:true,
+      subscribed:false, hashtag:'#앰버라인'
+    },
+    comments:[
+      { id:uid(), name:'@amberline', time:'3일 전', likes:'42', pinned:true, owner:true, more:true,
+        avatar:'', color:'#FF9800',
+        text:'이번 화 스포는 여기 대댓으로 부탁드려요~ 🌙\n\n📌 인물 관계 정리\n서이현 ⇄ 정스텔라\n카지야마 겐조 · 카지야마 류 · 정루시아…',
+        replies:[
+          { id:uid(), name:'@별밤지기', time:'20시간 전', likes:'214', color:'#673AB7',
+            text:'이현이가 스텔라 이름 부를 때만 목소리 톤이 반음 내려가는 거… 저만 들었나요?',
+            replies:[
+              { id:uid(), name:'@lucia_0409', time:'11시간 전', likes:'38', color:'#E91E63',
+                text:'저도요ㅠㅠ 12분 42초 그 장면만 백 번 돌려봤어요',
+                replies:[
+                  { id:uid(), name:'@별밤지기', time:'9시간 전', likes:'9', color:'#673AB7',
+                    text:'우리 같이 정신 차립시다…', replies:[] }
+                ]}
+            ]},
+          { id:uid(), name:'@kajiyama_3', time:'17시간 전', likes:'96', color:'#009688',
+            text:'겐조 류 루시아 셋이 한 프레임에 있을 때 공기 밀도가 다름ㅋㅋㅋ 부자지간인데 어색하지가 않은 게 더 신기해',
+            replies:[
+              { id:uid(), name:'@midnight_walk', time:'12시간 전', likes:'12', color:'#3F51B5',
+                text:'루시아가 가운데 서는 구도 진짜 잘 짰어요', replies:[] }
+            ]}
+        ]},
+      { id:uid(), name:'@해질녘산책', time:'1일 전', likes:'1.2천', hearted:true, color:'#4CAF50',
+        text:'연애물인데 왜 자꾸 눈물이 나는지 모르겠어요. 다섯 사람이 각자 다른 속도로 사랑하는 게 너무 좋아요',
+        replies:[
+          { id:uid(), name:'@amberline', time:'1일 전', likes:'87', owner:true, color:'#FF9800',
+            text:'다음 화도 예쁘게 만들어볼게요 :)', replies:[] }
+        ]}
+    ],
+    recs:[
+      { id:uid(), thumb:'', title:'[비하인드] 겐조 · 류 · 루시아 촬영 현장 30분 몰아보기', ch:'앰버라인', meta:'8.7만  2주 전', dur:'31:02' },
+      { id:uid(), thumb:'', title:'Playlist | 새벽 세 시의 러브송 🌙 잔잔한 시티팝 모음', ch:'밤의 라디오', meta:'21만  1개월 전', dur:'1:12:40' },
+      { id:uid(), thumb:'', title:'이현 × 스텔라 명장면 모음 .zip', ch:'컷신 clip', meta:'55만  4일 전', dur:'14:37' },
+      { id:uid(), thumb:'', title:'[단편] 아버지와 아들, 그리고 그녀 — 3화 전편', ch:'앰버라인', meta:'19만  1주 전', dur:'24:15' },
+      { id:uid(), thumb:'', title:'연애물 쓸 때 자주 하는 실수 5가지', ch:'이야기공작소', meta:'3.2만  6일 전', dur:'9:48' }
+    ]
+  };
+}
+let S = defaultState();
+S._scale = 2;
+
+/* ===================== 유틸 ===================== */
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function autoColor(name){ let h=0; const s=String(name||'?'); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return YT_COLORS[h%YT_COLORS.length]; }
+function initial(name){ return String(name||'?').replace(/^@/,'').slice(0,1).toUpperCase(); }
+
+/* ---- 이미지 위치/확대 ---- */
+function fxHost(key){
+  if(!key) return null;
+  try{
+    if(key==='video.thumb') return [S.video,'thumbFx'];
+    if(key==='video.avatar') return [S.video,'avatarFx'];
+    if(key.startsWith('rec:')) return [S.recs[Number(key.slice(4))],'thumbFx'];
+    if(key.startsWith('c:')) return [getNode(key.slice(2)),'avatarFx'];
+  }catch(e){}
+  return null;
+}
+function getFx(key){
+  const h = fxHost(key);
+  if(!h || !h[0]) return {};
+  return h[0][h[1]] || (h[0][h[1]] = {x:50,y:50,z:100,ar:1});
+}
+function fxSize(fx, car){
+  const z = (fx && fx.z) || 100;
+  const ar = (fx && fx.ar) || car;
+  let w, h;
+  if(ar > car){ h = 100; w = (ar/car)*100; } else { w = 100; h = (car/ar)*100; }
+  return [w*z/100, h*z/100];
+}
+function bgStyle(url, fx, car){
+  const [w,h] = fxSize(fx, car);
+  const x = (fx && fx.x!=null) ? fx.x : 50, y = (fx && fx.y!=null) ? fx.y : 50;
+  return `background-image:url('${url}');background-size:${w.toFixed(2)}% ${h.toFixed(2)}%;background-position:${x}% ${y}%;background-repeat:no-repeat;`;
+}
+function patchFx(key){
+  const fx = getFx(key);
+  const x = fx.x!=null?fx.x:50, y = fx.y!=null?fx.y:50;
+  document.querySelectorAll(`#capture [data-fx="${key}"]`).forEach(el=>{
+    const car = Number(el.dataset.car) || 1;
+    const [w,h] = fxSize(fx, car);
+    el.style.backgroundSize = w.toFixed(2)+'% '+h.toFixed(2)+'%';
+    el.style.backgroundPosition = x+'% '+y+'%';
+  });
+}
+function avatarHTML(name, url, size, color, key){
+  const st = `width:${size}px;height:${size}px;font-size:${Math.round(size*0.44)}px;`;
+  if(url) return `<div class="avatar" data-fx="${esc(key||'')}" data-car="1" style="${st}${bgStyle(url, getFx(key), 1)}"></div>`;
+  return `<div class="avatar" style="${st}background-color:${color||autoColor(name)}">${esc(initial(name))}</div>`;
+}
+function ph(seed){
+  let n=0; const s=String(seed||'');
+  for(let i=0;i<s.length;i++) n=(n*33+s.charCodeAt(i))>>>0;
+  const hue = n%360;
+  return `background-image:linear-gradient(135deg, hsl(${hue} 13% 34%), hsl(${(hue+45)%360} 15% 17%));`;
+}
+
+/* ===================== 아이콘 ===================== */
+const I = {
+  menu:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 6H3V5h18v1zm0 5H3v1h18v-1zm0 6H3v1h18v-1z"/></svg>`,
+  search:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.87 20.17l-5.59-5.59C16.35 13.35 17 11.75 17 10c0-3.87-3.13-7-7-7s-7 3.13-7 7 3.13 7 7 7c1.75 0 3.35-.65 4.58-1.71l5.59 5.59.7-.71zM10 16c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>`,
+  mic:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm7 9a7 7 0 01-6 6.92V21h3v1H8v-1h3v-2.08A7 7 0 015 12h1a6 6 0 0012 0h1z"/></svg>`,
+  plus:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 11V5h-2v6H5v2h6v6h2v-6h6v-2h-6z"/></svg>`,
+  bell:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20h4a2 2 0 11-4 0zm8-4.5V10a6 6 0 10-12 0v5.5L4 18v1h16v-1l-2-2.5zM17 18H7l1-1.2V10a4 4 0 118 0v6.8L17 18z"/></svg>`,
+  kbd:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 7H4a1 1 0 00-1 1v8a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1zm0 9H4V8h16v8zM6 9h2v2H6V9zm3 0h2v2H9V9zm3 0h2v2h-2V9zm3 0h2v2h-2V9zM6 12h2v2H6v-2zm3 0h6v2H9v-2zm7 0h2v2h-2v-2z"/></svg>`,
+  close:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.7 12l6.6 6.6-.7.7-6.6-6.6-6.6 6.6-.7-.7 6.6-6.6L4.7 5.4l.7-.7 6.6 6.6 6.6-6.6.7.7L12.7 12z"/></svg>`,
+  up:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11h3v9H3zM6 11l4.5-8c1.4 0 2.2 1 2 2.4L12 10h5.7c1.4 0 2.4 1.3 2.1 2.6l-1.3 6A2 2 0 0116.6 20H6"/></svg>`,
+  down:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 13h-3V4h3zM18 13l-4.5 8c-1.4 0-2.2-1-2-2.4L12 14H6.3a2 2 0 01-2.1-2.6l1.3-6A2 2 0 017.4 4H18"/></svg>`,
+  share:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15 5l-1 1 4 4H3v1h15l-4 4 1 1 6-5.5L15 5z"/></svg>`,
+  sort:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v1H3V6zm3 5h12v1H6v-1zm3 5h6v1H9v-1z"/></svg>`,
+  dots:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>`,
+  pin:`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3l5 5-2.5 1.2-3 6.3 1.8 1.8-.7.7L12 13.4 5.5 20 4 21l1-1.5L11.6 13 7.6 9l.7-.7 1.8 1.8 6.3-3L16 3z"/></svg>`,
+  caret:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.4L5.6 9l.8-.8 5.6 5.6 5.6-5.6.8.8-6.4 6.4z"/></svg>`,
+  info:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.8"/></svg>`,
+  save:`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 4H7a3 3 0 00-3 3v13l8-4 8 4V7a3 3 0 00-3-3z"/></svg>`,
+  cmt:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z"/></svg>`,
+  apple:`<svg width="13" height="16" viewBox="0 0 24 28" fill="currentColor"><path d="M16.7 14.9c0-2.7 2.2-4 2.3-4.1-1.3-1.9-3.3-2.1-4-2.1-1.7-.2-3.3 1-4.2 1s-2.2-1-3.6-1c-1.9 0-3.6 1.1-4.6 2.8-1.9 3.4-.5 8.4 1.4 11.2.9 1.3 2 2.8 3.5 2.8 1.4-.1 1.9-.9 3.6-.9s2.1.9 3.6.9c1.5 0 2.4-1.4 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.8-1.1-2.8-4.8zM14 6.3c.8-.9 1.3-2.2 1.1-3.5-1.1.1-2.5.8-3.3 1.7-.7.8-1.3 2.1-1.1 3.4 1.2.1 2.5-.6 3.3-1.6z"/></svg>`,
+  wifi:`<svg width="17" height="13" viewBox="0 0 17 13" fill="currentColor"><path d="M8.5 12.5l2.4-3a3.8 3.8 0 00-4.8 0l2.4 3zM13 6.8a7 7 0 00-9 0l1.3 1.6a5 5 0 016.4 0L13 6.8zM16 3.2a11.5 11.5 0 00-15 0l1.3 1.6a9.5 9.5 0 0112.4 0L16 3.2z"/></svg>`,
+  cell:`<svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"/></svg>`,
+  mute:`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 9h3l4-4v14l-4-4H4V9zm14.5-.5l-1 1L19 11l-1.5 1.5 1 1L20 12l1.5 1.5 1-1L21 11l1.5-1.5-1-1L20 10l-1.5-1.5z"/></svg>`,
+  navBack:`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11.5 5.5L5 12l6.5 6.5"/></svg>`,
+  navFwd:`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12.5 5.5L19 12l-6.5 6.5"/></svg>`,
+  navReload:`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.5A8.6 8.6 0 1 1 19 7.2"/><path d="M20.6 3.4v5.2h-5.2"/></svg>`,
+  navInfo:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 11.2v5.2M12 8.1v.9"/></svg>`,
+  navStar:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.6l2.6 5.5 5.9.8-4.3 4.2 1.05 6-5.25-2.9-5.25 2.9L7.8 14.1 3.5 9.9l5.9-.8z"/></svg>`,
+  plPlay:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg>`,
+  plPause:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/></svg>`,
+  plVol:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 9.2v5.6h3.7l4.6 4.4V4.8L7.2 9.2H3.5zm12.9 2.8a3.9 3.9 0 00-2.2-3.5v7a3.9 3.9 0 002.2-3.5zm-2.2-7.6v1.9a5.9 5.9 0 010 11.4v1.9a7.8 7.8 0 000-15.2z"/></svg>`,
+  plAuto:`<svg width="24" height="24" viewBox="0 0 24 24"><rect x="2.5" y="7.5" width="19" height="9" rx="4.5" fill="currentColor"/><circle cx="17" cy="12" r="3.1" fill="#111"/><path d="M15.6 10.6v2.8l2.4-1.4z" fill="currentColor"/></svg>`,
+  plCC:`<svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2.4" fill="currentColor"/><rect x="5.2" y="12.6" width="6" height="2.1" rx="1" fill="#101010"/><rect x="12.8" y="12.6" width="6" height="2.1" rx="1" fill="#101010"/><rect x="5.2" y="9.2" width="3.4" height="2.1" rx="1" fill="#101010"/><rect x="10" y="9.2" width="8.8" height="2.1" rx="1" fill="#101010"/></svg>`,
+  plGear:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zm7.3 3.4c0-.44-.04-.86-.1-1.28l1.8-1.4-1.75-3.03-2.12.86a7 7 0 00-2.22-1.29L14.6 3.5h-3.5l-.31 2.36a7 7 0 00-2.22 1.29l-2.12-.86L4.7 9.32l1.8 1.4a7.6 7.6 0 000 2.56l-1.8 1.4 1.75 3.03 2.12-.86a7 7 0 002.22 1.29l.31 2.36h3.5l.31-2.36a7 7 0 002.22-1.29l2.12.86 1.75-3.03-1.8-1.4c.06-.42.1-.84.1-1.28z"/></svg>`,
+  plMini:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 4H3a1.4 1.4 0 00-1.4 1.4v13.2A1.4 1.4 0 003 20h18a1.4 1.4 0 001.4-1.4V5.4A1.4 1.4 0 0021 4zm-.6 14H12v-5.4h8.4V18z"/></svg>`,
+  plFull:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 9.5V3.5h6v2h-4v4h-2zm11-6h6v6h-2v-4h-4v-2zm-11 11h2v4h4v2h-6v-6zm15 0h2v6h-6v-2h4v-4z"/></svg>`
+};
+/* ---- 재생 시간 ---- */
+function toSec(t){
+  const p = String(t||'').trim().split(':').map(n=>parseInt(n,10)||0);
+  if(p.length>=3) return p[0]*3600 + p[1]*60 + p[2];
+  if(p.length===2) return p[0]*60 + p[1];
+  return p[0]||0;
+}
+function fmtSec(s){
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), x = s%60;
+  const pad = n => String(n).padStart(2,'0');
+  return h ? `${h}:${pad(m)}:${pad(x)}` : `${m}:${pad(x)}`;
+}
+function playPct(){
+  const total = toSec(S.video.dur) || 1;
+  return Math.max(0, Math.min(100, toSec(S.video.cur)/total*100));
+}
+function playerOverlay(mobile){
+  const v = S.video, mode = v.playerUI || 'thumb';
+  if(mode==='thumb') return `<span class="dur">${esc(v.dur)}</span>`;
+  if(mode==='clean') return '';
+  const pct = playPct();
+  if(mobile){
+    return `<div class="pl-m"><div class="pl-mbtn">${v.playing?I.plPause:I.plPlay}</div>
+      <div class="pl-mtrack"><div class="pl-mplayed" style="width:${pct}%"></div><div class="pl-mdot" style="left:${pct}%"></div></div></div>`;
+  }
+  return `<div class="pl-ui">
+    <div class="pl-track"><div class="pl-buffer" style="width:${Math.min(100,pct+9)}%"></div>
+      <div class="pl-played" style="width:${pct}%"></div><div class="pl-dot" style="left:${pct}%"></div></div>
+    <div class="pl-row">
+      <span class="pl-btn">${v.playing?I.plPause:I.plPlay}</span>
+      <span class="pl-btn">${I.plVol}</span>
+      <span class="pl-time">${esc(v.cur)} / ${esc(v.dur)}</span>
+      <span class="pl-right">
+        <span class="pl-btn">${I.plAuto}</span>
+        <span class="pl-btn">${I.plCC}</span>
+        <span class="pl-btn pl-hd">${I.plGear}<i>HD</i></span>
+        <span class="pl-btn">${I.plMini}</span>
+        <span class="pl-btn">${I.plFull}</span>
+      </span>
+    </div></div>`;
+}
+function patchPlayer(){
+  const v = S.video, pct = playPct();
+  document.querySelectorAll('#capture .pl-played, #capture .pl-mplayed').forEach(el=>el.style.width = pct+'%');
+  document.querySelectorAll('#capture .pl-buffer').forEach(el=>el.style.width = Math.min(100,pct+9)+'%');
+  document.querySelectorAll('#capture .pl-dot, #capture .pl-mdot').forEach(el=>el.style.left = pct+'%');
+  document.querySelectorAll('#capture .pl-time').forEach(el=>el.textContent = v.cur+' / '+v.dur);
+}
+function syncPosSlider(){
+  const sl = rail.querySelector('[data-poss]');
+  if(sl) sl.value = Math.round(playPct()*10);
+}
+
+function ytLogo(dark){
+  return `<span class="yt-logo"><svg width="102" height="20" viewBox="0 0 102 20" style="overflow:visible">
+    <rect x="0" y="0" width="28" height="20" rx="6" fill="#FF0000"/>
+    <path d="M11 5.5l7 4.5-7 4.5z" fill="#fff"/>
+    <text x="32" y="16" font-family="Roboto, Arial, sans-serif" font-weight="700" font-size="17" letter-spacing="-1" fill="${dark?'#fff':'#282828'}">YouTube</text>
+  </svg><sup style="font-size:9px;color:${dark?'#aaa':'#606060'}">KR</sup></span>`;
+}
+
+/* ===================== 유튜브 렌더 ===================== */
+function commentHTML(c, depth, mobile, path){
+  const size = depth===0 ? (mobile?36:40) : 24;
+  const kids = (c.replies||[]).length;
+  let h = `<div class="cm"><div>${avatarHTML(c.name, c.avatar, size, c.color, 'c:'+path)}</div><div class="body">`;
+  if(c.pinned) h += `<div class="pinrow">${I.pin}<span>${esc(c.name)}님이 고정함</span></div>`;
+  h += `<div class="cm-top">`;
+  h += `<span class="cm-name ${c.owner?'owner':''}">${esc(c.name)}</span><span class="cm-time">${mobile?'· ':''}${esc(c.time)}</span></div>`;
+  h += `<div class="cm-text">${esc(c.text)}</div>`;
+  if(c.more) h += `<div class="cm-more">자세히 알아보기</div>`;
+  h += `<div class="cm-acts"><span class="lk">${I.up}<span>${esc(c.likes||'')}</span></span>
+        <span class="lk" style="margin-left:8px">${I.down}</span>`;
+  h += mobile ? `<span class="lk" style="margin-left:8px">${I.cmt}</span>` : `<span class="reply">답글</span>`;
+  if(c.hearted) h += `<span class="heart-wrap"><span class="ha" data-fx="video.avatar" data-car="1" style="${S.video.avatar?bgStyle(S.video.avatar, getFx('video.avatar'), 1):`background-color:${S.video.color||autoColor(S.video.channel)}`}"></span><span class="hh">❤️</span></span>`;
+  h += `</div>`;
+  if(kids){
+    if(depth===0) h += `<div class="toggle-replies">${I.caret}<span>답글 ${kids}개</span></div>`;
+    h += `<div class="replies ${depth>0?'thread':''}">` + c.replies.map((r,j)=>commentHTML(r, depth+1, mobile, path+'.'+j)).join('') + `</div>`;
+  }
+  return h + `</div></div>`;
+}
+
+function commentsInner(compact){
+  return `<div class="cm-head" style="${compact?'margin:4px 0 16px':''}"><div class="cm-count">${esc(S.ui.count)}</div>
+      <div class="cm-sort">${I.sort}<span>${esc(S.ui.sort)}</span></div></div>
+    ${compact?'':`<div class="cm-add">${avatarHTML(S.video.handle, S.video.avatar, 40, S.video.color, 'video.avatar')}<div class="ln">댓글 추가...</div></div>`}
+    <div class="cm-list">${S.comments.map((c,i)=>commentHTML(c,0,false,String(i))).join('')}</div>`;
+}
+function recSide(){
+  return `<div class="yt-side scrollpane"><div class="spin" style="display:flex;flex-direction:column;gap:8px">` +
+    S.recs.map((r,i) => `<div class="rec">
+      <div class="th" data-fx="rec:${i}" data-car="1.787" style="${r.thumb?bgStyle(r.thumb, r.thumbFx, 168/94):ph(r.title)}"><span class="d">${esc(r.dur)}</span></div>
+      <div class="info"><div class="rt">${esc(r.title)}</div>
+        <div class="rc">${esc(r.ch)}</div><div class="rc" style="margin-top:0">▷ ${esc(r.meta)}</div></div>
+    </div>`).join('') + `</div></div>`;
+}
+function pcHeader(){
+  return `<div class="yt-head">
+    <div style="display:flex;align-items:center;gap:14px"><span style="color:var(--icon)">${I.menu}</span>${ytLogo(S.theme==='dark')}</div>
+    <div class="yt-search">
+      <div class="sbox"><span>${esc(S.ui.search)}</span>
+        <span style="margin-left:auto;display:flex;gap:12px;color:var(--tx2)">${I.kbd}${I.close}</span></div>
+      <div class="sbtn" style="color:var(--icon)">${I.search}</div>
+      <div class="micbtn" style="color:var(--icon)">${I.mic}</div>
+    </div>
+    <div class="yt-head-right">
+      <div class="create-btn" style="color:var(--tx)">${I.plus}<span>만들기</span></div>
+      <div class="bell" style="color:var(--icon)">${I.bell}<span class="badge">9+</span></div>
+      ${avatarHTML(S.video.handle, S.video.avatar, 32, S.video.color, 'video.avatar')}
+    </div></div>`;
+}
+function videoBlockPC(vw){
+  const v = S.video;
+  return `<div style="flex:none;${vw?`width:${Math.round(vw)}px;`:''}">
+    <div class="player" data-fx="video.thumb" data-car="1.7778" style="${v.thumb?bgStyle(v.thumb, v.thumbFx, 16/9):ph(v.title)}">${playerOverlay(false)}</div>
+    <h1 class="vtitle">${esc(v.title)}</h1>
+    <div class="vmeta">
+      <div class="vchan">${avatarHTML(v.channel, v.avatar, 40, v.color, 'video.avatar')}
+        <div><div class="nm">${esc(v.channel)}</div><div class="subs">${esc(v.subs)}</div></div>
+        <div class="subbtn ${v.subscribed?'on':''}">${v.subscribed?'구독중':'구독'}</div></div>
+      <div class="vactions">
+        <div class="pill">${I.up}<span>${esc(v.likes)}</span><span class="sep"></span>${I.down}</div>
+        <div class="pill">${I.share}<span>공유</span></div>
+        <div class="pill">${I.save}<span>저장</span></div>
+        <div class="pill" style="padding:0 10px">${I.dots}</div>
+      </div></div></div>`;
+}
+
+function renderPC(){
+  const dark = S.theme==='dark';
+  const [W,H] = RATIOS[S.ratio] || RATIOS['16:9'];
+  const narrow = W < 900;
+  const wantSide = (S.layout==='recs' || S.sideRecs) && !narrow;
+  const descBox = `<div class="vdesc"><b>${esc(S.video.views)} ${esc(S.video.when)} ${esc(S.video.hashtag)}</b>
+    <div style="color:var(--blue);margin-top:2px">${esc(S.video.hashtag)}</div></div>`;
+
+  let body = '';
+  if(S.layout==='comments'){
+    body = `<div class="yt-main"><div class="scrollpane" style="flex:1;min-height:0"><div class="spin">${commentsInner()}</div></div></div>`
+         + (wantSide ? recSide() : '');
+  } else if(S.layout==='video'){
+    body = `<div class="yt-main"><div class="scrollpane" style="flex:1;min-height:0"><div class="spin">${videoBlockPC()}
+      ${descBox}${commentsInner()}</div></div></div>`
+         + (wantSide ? recSide() : '');
+  } else {
+    const inlineRecs = narrow ? `<div style="display:flex;flex-direction:column;gap:14px;margin-top:20px">` +
+      S.recs.map(r=>`<div class="rec">
+        <div class="th" data-fx="rec:${S.recs.indexOf(r)}" data-car="1.774" style="width:220px;height:124px;${r.thumb?bgStyle(r.thumb, r.thumbFx, 220/124):ph(r.title)}"><span class="d">${esc(r.dur)}</span></div>
+        <div class="info"><div class="rt" style="font-size:15px">${esc(r.title)}</div>
+          <div class="rc">${esc(r.ch)}</div><div class="rc" style="margin-top:0">▷ ${esc(r.meta)}</div></div></div>`).join('') + `</div>` : '';
+    body = `<div class="yt-main"><div class="scrollpane" style="flex:1;min-height:0"><div class="spin">${videoBlockPC()}
+      ${descBox}${inlineRecs}</div></div></div>`
+         + (wantSide ? recSide() : '');
+  }
+
+  let page = `<div class="yt-page">${S.ytHeader?pcHeader():''}<div class="yt-body">${body}</div></div>`;
+  let chrome = '';
+  if(S.browser){
+    const u = S.ui;
+    chrome = `<div class="chrome ${dark?'dark':''}">
+      <div class="chrome-tabs">
+        <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+        <div class="tabstrip">
+          ${u.tabs.map((t,i)=>`<div class="tab ${i===u.active?'active':''}">
+            <span class="fav" style="${t.img?`background-image:url('${t.img}')`:`background:${t.color}`}"></span>
+            <span class="tt">${esc(t.title)}</span><span class="xx">✕</span></div>`).join('')}
+          <div class="newtab">＋</div>
+        </div>
+      </div>
+      <div class="chrome-bar">
+        <span class="nav"><span class="navbtn">${I.navBack}</span><span class="navbtn off">${I.navFwd}</span><span class="navbtn">${I.navReload}</span></span>
+        <div class="omni"><span style="opacity:.62;display:flex">${I.navInfo}</span><span>${esc(u.url)}</span>
+          <span style="margin-left:auto;opacity:.62;display:flex">${I.navStar}</span></div></div>
+      ${S.bookmarks?`<div class="bmarks">${u.bmk.map(b=>`<span><i style="${b.img?`background-image:url('${b.img}')`:`background:${b.c}`}"></i>${esc(b.t)}</span>`).join('')}</div>`:''}
+    </div>`;
+  }
+  const menus = String(S.ui.macMenus||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const mac = S.macbar ? `<div class="macbar ${dark?'dark':''}">${I.apple}<b>${esc(S.ui.macApp)}</b>
+      ${menus.map(m=>`<span>${esc(m)}</span>`).join('')}
+      <span class="mright">${S.ui.macWifi?I.wifi:''}<span>${esc(S.ui.macTime)}</span></span></div>` : '';
+
+  const sizeCSS = `width:${W}px;` + (H ? `height:${H}px;` : '');
+  const screen = `<div class="yt pc-screen" data-t="${S.theme}" style="${sizeCSS}">${mac}${chrome}${page}</div>`;
+  return wrapMockup(screen, W);
+}
+
+/* ---------- 모바일 ---------- */
+function mbStatus(){
+  const b = Math.max(3, Math.min(100, Number(S.ui.battery)||0));
+  return `<div class="mb-status"><span>${esc(S.ui.time)}</span>
+    <span class="rr">${I.mute}${I.cell}${I.wifi}
+      <span style="display:inline-flex;align-items:center;width:27px;height:13px;border:1.5px solid rgba(255,255,255,.5);border-radius:4px;padding:1.5px">
+        <span style="display:block;height:100%;width:${b}%;background:${b<=20?'#ff3b30':'#fff'};border-radius:2px"></span></span>
+    </span></div>`;
+}
+function mbSheet(full){
+  return `<div class="mb-sheet ${full?'full':''}">
+    ${full?'<div class="mb-grab"></div>':''}
+    <div class="mb-sheet-head"><span class="t">댓글</span><span class="sp">${I.info}${I.close}</span></div>
+    <div class="mb-sortchips"><span class="mb-sortchip on">인기순</span><span class="mb-sortchip">최신순</span></div>
+    <div class="mb-guide">YouTube 커뮤니티 가이드를 따라 항상 타인을 존중하는 태도로 댓글을 작성하세요. <span style="color:var(--blue)">자세히 알아보기</span></div>
+    <div class="mb-cmlist mb scrollpane"><div class="spin">${S.comments.map((c,i)=>commentHTML(c,0,true,String(i))).join('')}</div></div>
+    <div class="mb-input">${avatarHTML(S.video.handle,S.video.avatar,30,S.video.color,'video.avatar')}
+      <div class="box">댓글 올리기...</div><div class="circ">💰</div></div>
+    <div class="mb-home"></div></div>`;
+}
+function mbWatch(){
+  const v = S.video;
+  let cpi = S.comments.findIndex(c=>!c.pinned); if(cpi<0) cpi = 0;
+  const cp = S.comments[cpi] || {};
+  let inner = `<div class="mb-vtitle">${esc(v.title)}</div>
+    <div class="mb-vmeta"><span>${esc(v.handle)}</span><span>좋아요 ${esc(v.likes)}개</span><span>${esc(v.views)}</span><span>${esc(v.when)}</span><span>${esc(v.hashtag)}</span><span class="more">더보기</span></div>
+    <div class="mb-chanrow">${avatarHTML(v.channel,v.avatar,36,v.color,'video.avatar')}
+      <span style="font-size:14px;font-weight:600">${esc(v.channel)}</span>
+      <div class="mb-act">${v.subscribed?'구독중':'구독'}</div>
+      <div style="margin-left:auto;display:flex;gap:12px;color:var(--tx)">${I.up}${I.down}${I.share}${I.dots}</div></div>
+    <div class="mb-cmcard"><div class="h">댓글 <span class="n">${esc((String(S.ui.count).match(/\d[\d,]*/)||[''])[0])}</span>
+        <span style="margin-left:auto;color:var(--tx2)">${I.dots}</span></div>
+      <div class="p">${avatarHTML(cp.name,cp.avatar,24,cp.color,'c:'+cpi)}<div>${esc(String(cp.text||'').slice(0,86))}…</div></div></div>`;
+  inner += S.recs.map((r,i)=>`<div class="mb-rec">
+      <div class="thumb" data-fx="rec:${i}" data-car="1.7778" style="${r.thumb?bgStyle(r.thumb, r.thumbFx, 16/9):ph(r.title)}"><span class="d">${esc(r.dur)}</span></div>
+      <div class="meta">${avatarHTML(r.ch,'',36)}<div style="flex:1"><div class="rt">${esc(r.title)}</div>
+        <div class="rc">${esc(r.ch)} · ${esc(r.meta)}</div></div><div style="color:var(--tx2)">${I.dots}</div></div></div>`).join('');
+  return `<div class="mb-scroll scrollpane"><div class="spin">${inner}</div></div>`;
+}
+function renderMobile(){
+  const v = S.video;
+  const [W,H] = PHONE;
+  let inner = mbStatus();
+  if(S.layout==='comments'){
+    inner += mbSheet(true);
+  } else {
+    inner += `<div class="mb-player" data-fx="video.thumb" data-car="1.7778" style="${v.thumb?bgStyle(v.thumb, v.thumbFx, 16/9):ph(v.title)}">${playerOverlay(true)}</div>`;
+    inner += (S.layout==='recs') ? mbWatch() : mbSheet(false);
+  }
+  const screen = `<div class="yt mb-screen" data-t="${S.theme}" style="width:${W}px;height:${H}px">${inner}</div>`;
+  return wrapMockup(screen, W);
+}
+
+function wrapMockup(screen, w){
+  if(S.mockup==='macbook')
+    return `<div class="mockcol"><div class="lid" style="width:${w+24}px"><div class="notch"></div><div class="inner">${screen}</div></div><div class="lid-base"></div></div>`;
+  if(S.mockup==='imac')
+    return `<div class="mockcol"><div class="imac-body" style="width:${w+32}px"><div class="inner" style="width:${w}px">${screen}</div>
+      <div class="imac-chin"><span style="color:#8a8f96">${I.apple.replace('width="13" height="16"','width="22" height="27"')}</span></div>
+    </div><div class="imac-neck"></div><div class="imac-foot"></div></div>`;
+  if(S.mockup==='iphone')
+    return `<div class="iph-body" style="width:${w+22}px"><div class="iph-island"></div><div class="inner">${screen}</div></div>`;
+  return `<div class="plain-shadow">${screen}</div>`;
+}
+
+function renderPreview(){
+  document.getElementById('capture').innerHTML = S.device==='pc' ? renderPC() : renderMobile();
+}
+
+/* ===================== 컨트롤 패널 ===================== */
+function seg(label, key, opts, cls){
+  return `<div class="field"><span class="flabel">${label}</span><div class="segs ${cls||''}" data-seg="${key}">` +
+    opts.map(o=>`<button type="button" data-v="${o[0]}" aria-pressed="${String(S[key])===String(o[0])}">${o[1]}</button>`).join('') + `</div></div>`;
+}
+function sw(label, key, disabled){
+  return `<button type="button" class="switch" data-sw="${key}" aria-pressed="${!!S[key]}" ${disabled?'disabled':''}>
+    <span>${label}</span><span class="track"></span></button>`;
+}
+function txt(label, path, val){
+  return `<div class="field"><label>${label}</label><input type="text" data-path="${path}" value="${esc(val)}"></div>`;
+}
+function vseg(label, key, opts){
+  return `<div class="field"><span class="flabel">${label}</span><div class="segs" data-vseg="${key}">` +
+    opts.map(o=>`<button type="button" data-v="${o[0]}" aria-pressed="${String(S.video[key])===String(o[0])}">${o[1]}</button>`).join('') + `</div></div>`;
+}
+function playerCtl(){
+  const v = S.video;
+  const on = (v.playerUI||'thumb')==='controls';
+  return `<div class="fxbox">
+    ${vseg('영상 화면','playerUI',[['thumb','썸네일'],['clean','재생 화면'],['controls','컨트롤바']])}
+    ${on?vseg('상태','playing',[[true,'재생 중'],[false,'일시정지']]):''}
+    ${on?`<label class="fxrow"><span>위치</span><input type="range" data-poss min="0" max="1000" step="1" value="${Math.round(playPct()*10)}"><b>${Math.round(playPct())}%</b></label>`:''}
+    <p class="hint">${on
+      ? '빨간 진행바는 현재 위치 ÷ 총 길이로 자동 계산돼요.'
+      : (v.playerUI==='clean' ? '컨트롤 없이 재생만 하는 화면이에요.' : '오른쪽 아래에 재생시간 배지가 붙어요.')}</p>
+  </div>`;
+}
+function fxCtl(key){
+  const fx = getFx(key);
+  const x = fx.x!=null?fx.x:50, y = fx.y!=null?fx.y:50, z = fx.z||100;
+  return `<div class="fxbox">
+    <span class="flabel">이미지 위치 · 확대</span>
+    <label class="fxrow"><span>좌우</span><input type="range" data-fxk="${key}" data-fxp="x" min="0" max="100" step="1" value="${x}"><b>${x}</b></label>
+    <label class="fxrow"><span>상하</span><input type="range" data-fxk="${key}" data-fxp="y" min="0" max="100" step="1" value="${y}"><b>${y}</b></label>
+    <label class="fxrow"><span>확대</span><input type="range" data-fxk="${key}" data-fxp="z" min="100" max="400" step="1" value="${z}"><b>${z}%</b></label>
+    <button class="btn mini" data-fxreset="${key}">위치 초기화</button>
+  </div>`;
+}
+function palette(scope, cur){
+  return `<div class="field"><span class="flabel">프로필 색</span><div class="pal">` +
+    YT_COLORS.map(c=>`<b data-col="${scope}" data-c="${c}" style="background:${c}" aria-pressed="${(cur||'').toUpperCase()===c}" title="${c}"></b>`).join('') +
+    `<input type="color" data-colcustom="${scope}" value="${cur||'#FF9800'}" title="직접 지정"></div></div>`;
+}
+
+function renderRail(){
+  const rail = document.getElementById('rail');
+  const v = S.video, u = S.ui, isPC = S.device==='pc';
+  let h = '';
+
+  h += `<details class="sec" open><summary><span class="sec-num">01</span>기본 설정<span class="sec-chev">›</span></summary><div class="sec-body">
+    ${seg('기기','device',[['pc','PC'],['mobile','폰']])}
+    ${seg('테마','theme',[['light','라이트'],['dark','다크']])}
+    ${seg('화면 구성','layout',[['comments','댓글창'],['video','영상+댓글'],['recs','영상+추천']])}
+    ${isPC ? seg('화면 비율','ratio',[['16:9','16:9'],['16:10','16:10'],['4:3','4:3'],['9:16','9:16'],['auto','자동']]) : ''}
+    ${isPC ? sw('추천 영상 사이드바', 'sideRecs', S.layout==='recs') : ''}
+    <p class="hint">${S.layout==='video'
+      ? '실제 유튜브 시청 화면 그대로예요. 영상 아래로 스크롤하면 제목·설명·댓글이 이어져요.'
+      : (S.layout==='recs' ? '추천 영상이 사이드바(폰은 아래)에 깔리는 시청 화면이에요.' : '댓글만 꽉 채운 화면이에요.')}
+      ${isPC?'':'폰 화면은 440×956으로 고정돼요.'}</p>
+    <p class="hint">화면 크기는 고정이라 댓글이 넘치면 미리보기에서 <b>스크롤</b>하면 돼요. 저장할 때 스크롤한 위치 그대로 찍혀요.</p>
+  </div></details>`;
+
+  h += `<details class="sec" open><summary><span class="sec-num">02</span>프레임 · 목업<span class="sec-chev">›</span></summary><div class="sec-body">`;
+  if(isPC){
+    h += seg('목업','mockup',[['none','없음'],['macbook','맥북'],['imac','아이맥']]);
+    h += sw('크롬 브라우저 창','browser');
+    h += sw('맥 상단 메뉴바','macbar');
+    h += sw('즐겨찾기 바','bookmarks', !S.browser);
+    h += sw('유튜브 헤더','ytHeader');
+    h += txt('주소창','ui.url',u.url);
+    h += `<div class="row2">${txt('메뉴바 앱 이름','ui.macApp',u.macApp)}${txt('메뉴바 오른쪽','ui.macTime',u.macTime)}</div>`;
+    h += `<div class="field"><label>메뉴 항목 (쉼표로 구분)</label>
+      <textarea data-path="ui.macMenus" rows="2">${esc(u.macMenus)}</textarea></div>`;
+    h += `<button type="button" class="switch" data-sw="_macWifi" aria-pressed="${!!u.macWifi}"><span>메뉴바 와이파이 아이콘</span><span class="track"></span></button>`;
+  } else {
+    h += seg('목업','mockup',[['none','없음'],['iphone','핸드폰']]);
+    h += `<div class="row2">${txt('시간','ui.time',u.time)}
+      <div class="field"><label>배터리 %</label><input type="text" data-path="ui.battery" value="${esc(u.battery)}"></div></div>`;
+  }
+  h += `<p class="hint">목업을 끄면 스크린샷처럼 네모난 화면만 나와요.</p></div></details>`;
+
+  if(isPC){
+    h += `<details class="sec"><summary><span class="sec-num">03</span>브라우저 탭 · 즐겨찾기<span class="sec-chev">›</span></summary><div class="sec-body">
+      <span class="flabel">탭 — 파비콘은 색 또는 이미지, [활성]으로 현재 탭 지정</span>
+      ${u.tabs.map((t,i)=>`<div class="listitem" style="flex-direction:row;align-items:center;gap:7px">
+        ${t.img
+          ? `<span class="thumb" style="width:26px;height:26px;border-radius:6px;background-image:url('${t.img}');background-size:cover"></span>`
+          : `<input type="color" data-tabcol="${i}" value="${t.color}" style="width:26px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer">`}
+        <input type="text" data-tab="${i}" value="${esc(t.title)}" placeholder="탭 제목">
+        <label class="iconbtn" title="파비콘 이미지">🖼<input type="file" accept="image/*" data-tabimg="${i}" style="display:none"></label>
+        ${t.img?`<button class="iconbtn" data-tabimgclr="${i}" title="이미지 제거">↺</button>`:''}
+        <button class="chip" data-active="${i}" aria-pressed="${i===u.active}">활성</button>
+        <button class="iconbtn del" data-deltab="${i}">✕</button></div>`).join('')}
+      <button class="btn wide" data-addtab="1">+ 탭 추가</button>
+      <span class="flabel" style="margin-top:6px">즐겨찾기 — 아이콘에 이미지도 넣을 수 있어요</span>
+      ${u.bmk.map((b,i)=>`<div class="listitem" style="flex-direction:row;align-items:center;gap:7px">
+        ${b.img
+          ? `<span class="thumb" style="width:26px;height:26px;border-radius:6px;background-image:url('${b.img}');background-size:cover"></span>`
+          : `<input type="color" data-bmkcol="${i}" value="${b.c}" style="width:26px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer">`}
+        <input type="text" data-bmk="${i}" value="${esc(b.t)}" placeholder="이름">
+        <label class="iconbtn" title="아이콘 이미지">🖼<input type="file" accept="image/*" data-bmkimg="${i}" style="display:none"></label>
+        ${b.img?`<button class="iconbtn" data-bmkimgclr="${i}" title="이미지 제거">↺</button>`:''}
+        <button class="iconbtn del" data-delbmk="${i}">✕</button></div>`).join('')}
+      <button class="btn wide" data-addbmk="1">+ 즐겨찾기 추가</button>
+    </div></details>`;
+  }
+
+  h += `<details class="sec"><summary><span class="sec-num">04</span>영상 정보<span class="sec-chev">›</span></summary><div class="sec-body">
+    <div class="filepick"><span class="thumb" style="${v.thumb?`background-image:url('${v.thumb}')`:ph(v.title)}"></span>
+      <label class="pk">썸네일 업로드<input type="file" accept="image/*" data-img="video.thumb"></label>
+      ${v.thumb?`<button class="btn mini" data-clear="video.thumb">삭제</button>`:''}</div>
+    ${v.thumb?fxCtl('video.thumb'):''}
+    <div class="filepick"><span class="thumb circle" style="${v.avatar?`background-image:url('${v.avatar}')`:`background-color:${v.color||autoColor(v.channel)}`}"></span>
+      <label class="pk">채널 프로필 업로드<input type="file" accept="image/*" data-img="video.avatar"></label>
+      ${v.avatar?`<button class="btn mini" data-clear="video.avatar">삭제</button>`:''}</div>
+    ${v.avatar?fxCtl('video.avatar'):''}
+    ${palette('video', v.color)}
+    ${txt('영상 제목','video.title',v.title)}
+    <div class="row2">${txt('채널명','video.channel',v.channel)}${txt('핸들','video.handle',v.handle)}</div>
+    <div class="row2">${txt('구독자','video.subs',v.subs)}${txt('현재 위치','video.cur',v.cur)}</div>
+    ${txt('총 길이','video.dur',v.dur)}
+    ${playerCtl()}
+    <div class="row3">${txt('좋아요','video.likes',v.likes)}${txt('조회수','video.views',v.views)}${txt('업로드','video.when',v.when)}</div>
+    <div class="row2">${txt('해시태그','video.hashtag',v.hashtag)}${txt('댓글 수 표시','ui.count',u.count)}</div>
+    ${isPC?txt('검색창 문구','ui.search',u.search):''}
+    ${sw('구독중 상태','_subscribed')}
+  </div></details>`;
+
+  h += `<details class="sec" open><summary><span class="sec-num">05</span>댓글<span class="sec-chev">›</span></summary><div class="sec-body">
+    <div style="display:flex;flex-direction:column;gap:11px">${S.comments.map((c,i)=>cnode(c,[i])).join('')}</div>
+    <button class="btn wide" data-add="root">+ 댓글 추가</button>
+    <p class="hint"><b>+ 답글</b>을 누르면 그 아래로 계속 붙어요. 깊이 제한 없음.</p>
+  </div></details>`;
+
+  h += `<details class="sec"><summary><span class="sec-num">06</span>추천 영상<span class="sec-chev">›</span></summary><div class="sec-body">
+    ${S.recs.map((r,i)=>recNode(r,i)).join('')}
+    <button class="btn wide" data-addrec="1">+ 추천 영상 추가</button>
+  </div></details>`;
+
+  h += `<details class="sec"><summary><span class="sec-num">07</span>저장<span class="sec-chev">›</span></summary><div class="sec-body">
+    ${seg('배율','_scale',[[1,'1x'],[2,'2x'],[3,'3x']])}
+    <button class="btn wide primary" id="btnPng2">PNG로 저장</button>
+    <p class="hint">미리보기에서 스크롤한 위치 그대로 저장돼요.</p>
+  </div></details>`;
+
+  rail.innerHTML = h;
+  rail.querySelector('.switch[data-sw="_subscribed"]')?.setAttribute('aria-pressed', String(!!S.video.subscribed));
+}
+
+function depthName(d){ return d===0?'댓글':(d===1?'대댓글':'대'.repeat(d)+'댓글'); }
+function cnode(c, path){
+  const d = path.length-1, p = path.join('.');
+  return `<div class="cnode ${d===0?'lv1':''}">
+    <div class="cnode-head"><span class="depth-tag">${depthName(d)}</span>
+      <span style="font-size:11px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</span>
+      <span class="sp"><button class="iconbtn" data-mv="${p}" data-dir="-1">↑</button>
+        <button class="iconbtn" data-mv="${p}" data-dir="1">↓</button>
+        <button class="iconbtn del" data-del="${p}">✕</button></span></div>
+    <div class="row2">
+      <input type="text" data-c="${p}" data-f="name" value="${esc(c.name)}" placeholder="@닉네임">
+      <input type="text" data-c="${p}" data-f="time" value="${esc(c.time)}" placeholder="20시간 전"></div>
+    <textarea data-c="${p}" data-f="text" rows="3" placeholder="댓글 내용">${esc(c.text)}</textarea>
+    <div class="row2">
+      <input type="text" data-c="${p}" data-f="likes" value="${esc(c.likes||'')}" placeholder="좋아요 수">
+      <div class="filepick" style="padding:5px 8px">
+        <span class="thumb circle" style="width:22px;height:22px;${c.avatar?`background-image:url('${c.avatar}')`:`background-color:${c.color||autoColor(c.name)}`}"></span>
+        <label class="pk">프로필<input type="file" accept="image/*" data-cimg="${p}"></label>
+        ${c.avatar?`<button class="iconbtn" data-cimgclr="${p}" title="사진 빼고 색으로">↺</button>`:''}
+      </div></div>
+    ${c.avatar?fxCtl('c:'+p):''}
+    ${palette('c:'+p, c.color)}
+    ${c.avatar?`<p class="hint" style="margin-top:-4px">사진이 들어가 있어요. 색으로 되돌리려면 ↺ 또는 색을 누르세요.</p>`:''}
+    <div class="chips">
+      <button class="chip" data-flag="${p}" data-k="pinned" aria-pressed="${!!c.pinned}">📌 고정됨</button>
+      <button class="chip" data-flag="${p}" data-k="owner" aria-pressed="${!!c.owner}">채널 주인</button>
+      <button class="chip" data-flag="${p}" data-k="hearted" aria-pressed="${!!c.hearted}">❤️ 하트</button>
+      <button class="chip" data-flag="${p}" data-k="more" aria-pressed="${!!c.more}">자세히</button>
+      <button class="chip" data-reply="${p}" style="border-style:dashed">+ 답글</button>
+    </div>
+    ${(c.replies&&c.replies.length)?`<div class="cnode-kids">${c.replies.map((r,i)=>cnode(r, path.concat(i))).join('')}</div>`:''}
+  </div>`;
+}
+function recNode(r,i){
+  return `<div class="listitem">
+    <div class="cnode-head"><span class="depth-tag">추천 ${i+1}</span>
+      <span class="sp"><button class="iconbtn del" data-delrec="${i}">✕</button></span></div>
+    <input type="text" data-r="${i}" data-f="title" value="${esc(r.title)}" placeholder="제목">
+    <div class="row2"><input type="text" data-r="${i}" data-f="ch" value="${esc(r.ch)}" placeholder="채널">
+      <input type="text" data-r="${i}" data-f="meta" value="${esc(r.meta)}" placeholder="조회수 · 날짜"></div>
+    <div class="row2"><input type="text" data-r="${i}" data-f="dur" value="${esc(r.dur)}" placeholder="12:41">
+      <div class="filepick" style="padding:5px 8px">
+        <span class="thumb" style="width:34px;height:20px;${r.thumb?`background-image:url('${r.thumb}')`:ph(r.title)}"></span>
+        <label class="pk">썸네일<input type="file" accept="image/*" data-rimg="${i}"></label>
+        ${r.thumb?`<button class="iconbtn" data-rimgclr="${i}" title="이미지 제거">↺</button>`:''}
+      </div></div>
+    ${r.thumb?fxCtl('rec:'+i):''}</div>`;
+}
+
+/* ===================== 트리 조작 ===================== */
+function getNode(p){
+  const idx = p.split('.').map(Number);
+  let arr = S.comments, node = null;
+  for(const i of idx){ node = arr[i]; arr = node.replies = node.replies||[]; }
+  return node;
+}
+function getParentArr(p){
+  const idx = p.split('.').map(Number);
+  let arr = S.comments;
+  for(let k=0;k<idx.length-1;k++) arr = arr[idx[k]].replies = arr[idx[k]].replies||[];
+  return { arr, i: idx[idx.length-1] };
+}
+/* 색을 고르면 올려둔 사진은 빠지고 색 동그라미로 돌아감 */
+function setColor(scope, col){
+  if(scope==='video'){ S.video.color = col; S.video.avatar = ''; }
+  else if(scope.startsWith('c:')){ const n = getNode(scope.slice(2)); n.color = col; n.avatar = ''; }
+}
+
+/* ===================== 이벤트 ===================== */
+const rail = document.getElementById('rail');
+
+rail.addEventListener('click', e => {
+  const segBtn = e.target.closest('.segs button');
+  if(segBtn && segBtn.parentElement.dataset.vseg){
+    let v = segBtn.dataset.v;
+    if(v==='true') v = true; else if(v==='false') v = false;
+    S.video[segBtn.parentElement.dataset.vseg] = v;
+    return full();
+  }
+  if(segBtn){
+    const key = segBtn.parentElement.dataset.seg;
+    let v = segBtn.dataset.v;
+    if(v==='true') v = true; else if(v==='false') v = false; else if(key==='_scale') v = Number(v);
+    S[key] = v;
+    if(key==='device') S.mockup = 'none';
+    if(key==='layout' && v==='recs') S.sideRecs = true;
+    return full(true);
+  }
+  const swBtn = e.target.closest('.switch');
+  if(swBtn && !swBtn.hasAttribute('disabled')){
+    const k = swBtn.dataset.sw;
+    if(k==='_subscribed') S.video.subscribed = !S.video.subscribed;
+    else if(k==='_macWifi') S.ui.macWifi = !S.ui.macWifi;
+    else S[k] = !S[k];
+    return full();
+  }
+  const col = e.target.closest('[data-col]');
+  if(col){ setColor(col.dataset.col, col.dataset.c); return full(); }
+  const flag = e.target.closest('[data-flag]');
+  if(flag){ const n = getNode(flag.dataset.flag); n[flag.dataset.k] = !n[flag.dataset.k]; return full(); }
+  const rep = e.target.closest('[data-reply]');
+  if(rep){ const n = getNode(rep.dataset.reply); (n.replies=n.replies||[]).push({id:uid(),name:'@새사용자',time:'방금 전',likes:'',text:'답글 내용을 입력하세요',replies:[]}); return full(); }
+  const del = e.target.closest('[data-del]');
+  if(del){ const {arr,i} = getParentArr(del.dataset.del); arr.splice(i,1); return full(); }
+  const mv = e.target.closest('[data-mv]');
+  if(mv){ const {arr,i} = getParentArr(mv.dataset.mv); const j = i + Number(mv.dataset.dir);
+    if(j>=0 && j<arr.length){ const t=arr[i]; arr[i]=arr[j]; arr[j]=t; } return full(); }
+  if(e.target.closest('[data-add="root"]')){ S.comments.push({id:uid(),name:'@새사용자',time:'방금 전',likes:'',text:'댓글 내용을 입력하세요',replies:[]}); return full(); }
+  if(e.target.closest('[data-addrec]')){ S.recs.push({id:uid(),thumb:'',title:'새 추천 영상 제목',ch:'채널명',meta:'1만  1일 전',dur:'10:00'}); return full(); }
+  const dr = e.target.closest('[data-delrec]');
+  if(dr){ S.recs.splice(Number(dr.dataset.delrec),1); return full(); }
+  if(e.target.closest('[data-addtab]')){ S.ui.tabs.push({id:uid(),title:'새 탭',color:'#9AA0A6'}); return full(); }
+  const dt = e.target.closest('[data-deltab]');
+  if(dt){ const i=Number(dt.dataset.deltab); if(S.ui.tabs.length>1){ S.ui.tabs.splice(i,1); if(S.ui.active>=S.ui.tabs.length) S.ui.active=S.ui.tabs.length-1; } return full(); }
+  const ac = e.target.closest('[data-active]');
+  if(ac){ S.ui.active = Number(ac.dataset.active); return full(); }
+  if(e.target.closest('[data-addbmk]')){ S.ui.bmk.push({id:uid(),t:'새 즐겨찾기',c:'#4285F4'}); return full(); }
+  const db = e.target.closest('[data-delbmk]');
+  if(db){ S.ui.bmk.splice(Number(db.dataset.delbmk),1); return full(); }
+  const fxr = e.target.closest('[data-fxreset]');
+  if(fxr){ const fx = getFx(fxr.dataset.fxreset); fx.x=50; fx.y=50; fx.z=100; return full(); }
+  const cic = e.target.closest('[data-cimgclr]');
+  if(cic){ getNode(cic.dataset.cimgclr).avatar = ''; return full(); }
+  const ric = e.target.closest('[data-rimgclr]');
+  if(ric){ S.recs[Number(ric.dataset.rimgclr)].thumb = ''; return full(); }
+  const tic = e.target.closest('[data-tabimgclr]');
+  if(tic){ S.ui.tabs[Number(tic.dataset.tabimgclr)].img = ''; return full(); }
+  const bic = e.target.closest('[data-bmkimgclr]');
+  if(bic){ S.ui.bmk[Number(bic.dataset.bmkimgclr)].img = ''; return full(); }
+  const cl = e.target.closest('[data-clear]');
+  if(cl){ const [a,b] = cl.dataset.clear.split('.'); S[a][b]=''; return full(); }
+  if(e.target.id==='btnPng2') savePNG();
+});
+
+rail.addEventListener('input', e => {
+  const t = e.target;
+  if(t.dataset.poss !== undefined){
+    const total = toSec(S.video.dur) || 1;
+    S.video.cur = fmtSec(total * Number(t.value)/1000);
+    const ti = rail.querySelector('[data-path="video.cur"]'); if(ti) ti.value = S.video.cur;
+    const lbl = t.nextElementSibling; if(lbl) lbl.textContent = Math.round(Number(t.value)/10)+'%';
+    return patchPlayer();
+  }
+  if(t.dataset.path === 'video.cur' || t.dataset.path === 'video.dur'){
+    S.video[t.dataset.path.split('.')[1]] = t.value;
+    syncPosSlider(); return patchPlayer();
+  }
+  if(t.dataset.path){ const [a,b] = t.dataset.path.split('.');
+    S[a][b] = (b==='battery') ? (parseInt(t.value,10)||0) : t.value; return renderPreview(); }
+  if(t.dataset.c){ getNode(t.dataset.c)[t.dataset.f] = t.value; return renderPreview(); }
+  if(t.dataset.r){ S.recs[Number(t.dataset.r)][t.dataset.f] = t.value; return renderPreview(); }
+  if(t.dataset.tab !== undefined && t.dataset.tab !== ''){ S.ui.tabs[Number(t.dataset.tab)].title = t.value; return renderPreview(); }
+  if(t.dataset.tabcol !== undefined && t.dataset.tabcol !== ''){ S.ui.tabs[Number(t.dataset.tabcol)].color = t.value; return renderPreview(); }
+  if(t.dataset.bmk !== undefined && t.dataset.bmk !== ''){ S.ui.bmk[Number(t.dataset.bmk)].t = t.value; return renderPreview(); }
+  if(t.dataset.bmkcol !== undefined && t.dataset.bmkcol !== ''){ S.ui.bmk[Number(t.dataset.bmkcol)].c = t.value; return renderPreview(); }
+  if(t.dataset.colcustom){ setColor(t.dataset.colcustom, t.value); return renderPreview(); }
+  if(t.dataset.fxk){
+    const fx = getFx(t.dataset.fxk);
+    fx[t.dataset.fxp] = Number(t.value);
+    const lbl = t.nextElementSibling;
+    if(lbl) lbl.textContent = t.dataset.fxp==='z' ? t.value+'%' : t.value;
+    return patchFx(t.dataset.fxk);   /* 미리보기 전체를 다시 그리지 않아서 끊기지 않음 */
+  }
+});
+
+rail.addEventListener('change', e => {
+  const t = e.target;
+  if(t.dataset.colcustom){ setColor(t.dataset.colcustom, t.value); return full(); }
+  if(t.type!=='file' || !t.files || !t.files[0]) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const url = fr.result;
+    const apply = ar => {
+      let key = '';
+      if(t.dataset.img){ const [a,b]=t.dataset.img.split('.'); S[a][b]=url; key = t.dataset.img; }
+      else if(t.dataset.cimg){ getNode(t.dataset.cimg).avatar = url; key = 'c:'+t.dataset.cimg; }
+      else if(t.dataset.rimg){ S.recs[Number(t.dataset.rimg)].thumb = url; key = 'rec:'+t.dataset.rimg; }
+      else if(t.dataset.tabimg){ S.ui.tabs[Number(t.dataset.tabimg)].img = url; }
+      else if(t.dataset.bmkimg){ S.ui.bmk[Number(t.dataset.bmkimg)].img = url; }
+      if(key){ const h = fxHost(key); if(h && h[0]) h[0][h[1]] = {x:50, y:50, z:100, ar:ar||1}; }
+      full();
+    };
+    const im = new Image();
+    im.onload = () => apply(im.naturalWidth / im.naturalHeight);
+    im.onerror = () => apply(1);
+    im.src = url;
+  };
+  fr.readAsDataURL(t.files[0]);
+});
+
+function full(refit){
+  const open = [...document.querySelectorAll('details.sec')].map(d=>d.open);
+  const sc = rail.scrollTop;
+  renderRail(); renderPreview();
+  document.querySelectorAll('details.sec').forEach((d,i)=>{ if(open[i]!==undefined) d.open = open[i]; });
+  rail.scrollTop = sc;
+  if(refit) setTimeout(fit, 20);
+}
+
+/* 확대 */
+const stageInner = document.getElementById('stageInner');
+const zoom = document.getElementById('zoom'), zoomVal = document.getElementById('zoomVal');
+function applyZoom(v){ stageInner.style.transform = `scale(${v/100})`; zoomVal.textContent = v+'%'; }
+zoom.addEventListener('input', ()=>applyZoom(zoom.value));
+document.getElementById('btnFit').addEventListener('click', fit);
+function fit(){
+  const stage = document.getElementById('stage');
+  const el = document.getElementById('capture').firstElementChild;
+  if(!el) return;
+  const prev = stageInner.style.transform;
+  stageInner.style.transform = 'scale(1)';
+  const r = el.getBoundingClientRect();
+  stageInner.style.transform = prev;
+  const byW = ((stage.clientWidth-70)/r.width)*100;
+  const byH = ((stage.clientHeight-90)/r.height)*100;
+  const target = Math.max(15, Math.min(130, Math.floor(Math.min(byW, byH))));
+  zoom.value = target; applyZoom(target);
+}
+
+/* PNG 저장 */
+let dlNs = null;
+if(window.claude && typeof claude.use === 'function') claude.use('downloads').then(ns=>{dlNs=ns}).catch(()=>{});
+function freezeScroll(on){
+  document.querySelectorAll('#capture .scrollpane').forEach(el=>{
+    const kid = el.firstElementChild; if(!kid) return;
+    if(on){ el.dataset.st = el.scrollTop; kid.style.marginTop = (-el.scrollTop)+'px'; el.scrollTop = 0; }
+    else { kid.style.marginTop = ''; el.scrollTop = Number(el.dataset.st||0); }
+  });
+}
+function fallbackSave(cv, name){
+  cv.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.download = name; a.href = url; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }, 'image/png');
+}
+function savePNG(){
+  const node = document.getElementById('capture');
+  const prev = stageInner.style.transform;
+  const name = `youtube-comment-${S.device}-${S.theme}.png`;
+  stageInner.style.transform = 'scale(1)';
+  freezeScroll(true);
+  html2canvas(node, {backgroundColor:null, scale:S._scale||2, useCORS:true, logging:false}).then(cv=>{
+    freezeScroll(false); stageInner.style.transform = prev;
+    if(dlNs) cv.toBlob(blob => { dlNs.save({filename:name, data:blob}).catch(err=>{ if(!err||err.code!=='declined') fallbackSave(cv,name); }); }, 'image/png');
+    else fallbackSave(cv, name);
+  }).catch(()=>{ freezeScroll(false); stageInner.style.transform = prev; });
+}
+document.getElementById('btnPng').addEventListener('click', savePNG);
+document.getElementById('btnReset').addEventListener('click', ()=>{ const sc=S._scale; S = defaultState(); S._scale=sc; full(true); });
+
+renderRail(); renderPreview(); setTimeout(fit, 60);
+</script>
+
+</body>
+</html>
