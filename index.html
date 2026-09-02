@@ -58,7 +58,9 @@ button{font-family:inherit}
   background-size:22px 22px;
   display:flex; align-items:flex-start; justify-content:center; padding:44px 32px 96px;
 }
-.stage-inner{transform-origin:top center; color:var(--ink)}
+/* 축소한 만큼만 자리를 차지하도록 실제 크기 박스를 따로 둔다 */
+.stage-box{position:relative; flex:none}
+.stage-inner{transform-origin:top left; position:absolute; left:0; top:0; color:var(--ink)}
 .zoombar{
   position:fixed; right:22px; bottom:20px; z-index:20; display:flex; align-items:center; gap:10px;
   background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:7px 14px;
@@ -139,11 +141,13 @@ input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
 .listitem{border:1px solid var(--line); border-radius:10px; padding:9px; display:flex; flex-direction:column; gap:7px; background:var(--panel-2)}
 
 @media (max-width:900px){
-  .app{grid-template-columns:1fr; grid-template-rows:1fr auto; height:auto}
+  .app{grid-template-columns:1fr; grid-template-rows:auto auto; height:auto; min-height:0}
   .rail{order:2; border-right:0; border-top:1px solid var(--line)}
-  .rail-body{overflow:visible}
-  .stage{order:1; min-height:60vh; padding:24px 12px 40px}
-  .zoombar{position:sticky; bottom:auto; right:auto; margin:0 auto}
+  .rail-body{overflow:visible; padding-bottom:8px}
+  .rail-foot{position:sticky; bottom:0; z-index:5}
+  .stage{order:1; min-height:0; padding:16px 10px 22px; align-items:flex-start}
+  .zoombar{right:12px; bottom:72px; padding:6px 11px; gap:7px}
+  .zoombar input[type=range]{width:74px}
 }
 
 /* ================================================================
@@ -359,12 +363,14 @@ input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
     </div>
   </aside>
   <main class="stage" id="stage">
-    <div class="stage-inner" id="stageInner"><div id="capture"></div></div>
+    <div class="stage-box" id="stageBox">
+      <div class="stage-inner" id="stageInner"><div id="capture"></div></div>
+    </div>
   </main>
 </div>
 <div class="zoombar">
   <span style="color:var(--ink-2)">확대</span>
-  <input type="range" id="zoom" min="15" max="130" value="60">
+  <input type="range" id="zoom" min="10" max="130" value="60">
   <span class="zoomval" id="zoomVal">60%</span>
   <button class="btn mini" id="btnFit">맞춤</button>
 </div>
@@ -798,6 +804,7 @@ function wrapMockup(screen, w){
 
 function renderPreview(){
   document.getElementById('capture').innerHTML = S.device==='pc' ? renderPC() : renderMobile();
+  measureStage();
 }
 
 /* ===================== 컨트롤 패널 ===================== */
@@ -1153,23 +1160,44 @@ function full(refit){
 
 /* 확대 */
 const stageInner = document.getElementById('stageInner');
+const stageBox = document.getElementById('stageBox');
 const zoom = document.getElementById('zoom'), zoomVal = document.getElementById('zoomVal');
-function applyZoom(v){ stageInner.style.transform = `scale(${v/100})`; zoomVal.textContent = v+'%'; }
+let curScale = 1, natW = 0, natH = 0;
+
+function measureStage(){
+  const el = document.getElementById('capture').firstElementChild;
+  if(!el){ natW = natH = 0; return; }
+  const prev = stageInner.style.transform;
+  stageInner.style.transform = 'none';
+  const r = el.getBoundingClientRect();
+  natW = r.width; natH = r.height;
+  stageInner.style.transform = prev;
+  sizeBox();
+}
+function sizeBox(){
+  stageBox.style.width  = Math.max(1, Math.round(natW*curScale))+'px';
+  stageBox.style.height = Math.max(1, Math.round(natH*curScale))+'px';
+}
+function applyZoom(v){
+  curScale = Number(v)/100;
+  stageInner.style.transform = `scale(${curScale})`;
+  zoomVal.textContent = Math.round(Number(v))+'%';
+  sizeBox();
+}
 zoom.addEventListener('input', ()=>applyZoom(zoom.value));
 document.getElementById('btnFit').addEventListener('click', fit);
 function fit(){
   const stage = document.getElementById('stage');
-  const el = document.getElementById('capture').firstElementChild;
-  if(!el) return;
-  const prev = stageInner.style.transform;
-  stageInner.style.transform = 'scale(1)';
-  const r = el.getBoundingClientRect();
-  stageInner.style.transform = prev;
-  const byW = ((stage.clientWidth-70)/r.width)*100;
-  const byH = ((stage.clientHeight-90)/r.height)*100;
-  const target = Math.max(15, Math.min(130, Math.floor(Math.min(byW, byH))));
+  measureStage();
+  if(!natW) return;
+  const narrow = window.innerWidth <= 900;
+  const byW = ((stage.clientWidth - (narrow ? 22 : 70))/natW)*100;
+  const byH = ((window.innerHeight - 150)/natH)*100;
+  const target = Math.max(10, Math.min(130, Math.floor(narrow ? byW : Math.min(byW, byH))));
   zoom.value = target; applyZoom(target);
 }
+let fitTimer = null;
+window.addEventListener('resize', ()=>{ clearTimeout(fitTimer); fitTimer = setTimeout(fit, 160); });
 
 /* PNG 저장 */
 let dlNs = null;
@@ -1195,10 +1223,10 @@ function savePNG(){
   stageInner.style.transform = 'scale(1)';
   freezeScroll(true);
   html2canvas(node, {backgroundColor:null, scale:S._scale||3, useCORS:true, allowTaint:true, imageTimeout:0, logging:false}).then(cv=>{
-    freezeScroll(false); stageInner.style.transform = prev;
+    freezeScroll(false); stageInner.style.transform = prev; sizeBox();
     if(dlNs) cv.toBlob(blob => { dlNs.save({filename:name, data:blob}).catch(err=>{ if(!err||err.code!=='declined') fallbackSave(cv,name); }); }, 'image/png');
     else fallbackSave(cv, name);
-  }).catch(()=>{ freezeScroll(false); stageInner.style.transform = prev; });
+  }).catch(()=>{ freezeScroll(false); stageInner.style.transform = prev; sizeBox(); });
 }
 document.getElementById('btnPng').addEventListener('click', savePNG);
 document.getElementById('btnReset').addEventListener('click', ()=>{ const sc=S._scale; S = defaultState(); S._scale=sc; full(true); });
