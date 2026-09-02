@@ -160,6 +160,8 @@ input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
 }
 .scrollpane{overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none}
 .scrollpane::-webkit-scrollbar{display:none}
+/* 원본 해상도를 유지하는 이미지 레이어 (max-width 리셋을 반드시 무효화) */
+.fximg{position:absolute; display:block; max-width:none !important; max-height:none !important; pointer-events:none}
 
 .pc-screen{background:var(--bg); overflow:hidden; display:flex; flex-direction:column; position:relative}
 .macbar{height:28px; flex:none; background:linear-gradient(#f6f6f7,#eeeef0); color:#1c1c1e; display:flex; align-items:center; gap:19px; padding:0 15px; font-size:13px; font-weight:400; letter-spacing:-.1px; white-space:nowrap; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif; border-bottom:1px solid rgba(0,0,0,.09)}
@@ -206,7 +208,7 @@ input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
 .create-btn{height:36px; border-radius:999px; background:var(--chip); display:flex; align-items:center; gap:6px; padding:0 15px; font-size:14px; font-weight:500}
 .bell{position:relative; width:40px; height:40px; display:grid; place-items:center}
 .bell .badge{position:absolute; top:2px; right:2px; background:#e53935; color:#fff; font-size:9px; font-weight:700; border-radius:999px; padding:1px 4px; line-height:1.3}
-.avatar{border-radius:50%; background-size:cover; background-position:center; flex:none; display:grid; place-items:center; color:#fff; font-weight:500; overflow:hidden}
+.avatar{border-radius:50%; background-size:cover; background-position:center; flex:none; display:grid; place-items:center; color:#fff; font-weight:500; overflow:hidden; position:relative}
 
 .yt-body{flex:1; min-height:0; display:flex; gap:24px; padding:24px; align-items:stretch}
 .yt-main{flex:1; min-width:0; display:flex; flex-direction:column; min-height:0}
@@ -263,7 +265,7 @@ input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
 .cm-acts .lk{display:flex; align-items:center; gap:6px}
 .cm-acts .reply{font-size:12px; font-weight:500; color:var(--tx); padding:0 8px; height:32px; display:flex; align-items:center; border-radius:999px}
 .heart-wrap{position:relative; width:22px; height:22px; margin-left:2px}
-.heart-wrap .ha{position:absolute; inset:0; border-radius:50%; background-size:cover; background-position:center}
+.heart-wrap .ha{position:absolute; inset:0; border-radius:50%; overflow:hidden; background-size:cover; background-position:center}
 .heart-wrap .hh{position:absolute; right:-4px; bottom:-4px; font-size:11px}
 .replies{margin-top:14px; display:flex; flex-direction:column; gap:14px}
 .replies.thread{border-left:2px solid var(--bd); padding-left:14px}
@@ -293,7 +295,7 @@ input[type=text]:focus, textarea:focus{border-color:var(--accent); outline:none}
 .mb-cmcard .h .n{font-size:12px; color:var(--tx2); font-weight:400}
 .mb-cmcard .p{display:flex; gap:8px; font-size:13px; line-height:18px}
 .mb-rec{padding:0 0 14px; flex:none}
-.mb-rec .thumb{width:100%; height:0; padding-top:56.25%; background-size:cover; background-position:center; position:relative}
+.mb-rec .thumb{width:100%; height:0; padding-top:56.25%; background-size:cover; background-position:center; position:relative; overflow:hidden}
 .mb-rec .thumb .d{position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; padding:2px 4px; border-radius:4px}
 .mb-rec .meta{display:flex; gap:12px; padding:12px 12px 0}
 .mb-rec .rt{font-size:14px; font-weight:500; line-height:20px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
@@ -441,7 +443,7 @@ function defaultState(){
   };
 }
 let S = defaultState();
-S._scale = 2;
+S._scale = 3;
 
 /* ===================== 유틸 ===================== */
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -471,24 +473,30 @@ function fxSize(fx, car){
   if(ar > car){ h = 100; w = (ar/car)*100; } else { w = 100; h = (car/ar)*100; }
   return [w*z/100, h*z/100];
 }
-function bgStyle(url, fx, car){
+function fxGeom(fx, car){
   const [w,h] = fxSize(fx, car);
   const x = (fx && fx.x!=null) ? fx.x : 50, y = (fx && fx.y!=null) ? fx.y : 50;
-  return `background-image:url('${url}');background-size:${w.toFixed(2)}% ${h.toFixed(2)}%;background-position:${x}% ${y}%;background-repeat:no-repeat;`;
+  return { w, h, l:(1-w/100)*x, t:(1-h/100)*y };
+}
+/* 배경이미지 대신 진짜 <img>를 얹는다 — 저장할 때 원본 해상도가 그대로 살아남음 */
+function imgLayer(url, fx, car, key){
+  const g = fxGeom(fx, car);
+  return `<img class="fximg" data-fx="${esc(key||'')}" data-car="${car}" src="${url}" alt=""
+    style="left:${g.l.toFixed(3)}%;top:${g.t.toFixed(3)}%;width:${g.w.toFixed(3)}%;height:${g.h.toFixed(3)}%">`;
 }
 function patchFx(key){
   const fx = getFx(key);
-  const x = fx.x!=null?fx.x:50, y = fx.y!=null?fx.y:50;
   document.querySelectorAll(`#capture [data-fx="${key}"]`).forEach(el=>{
-    const car = Number(el.dataset.car) || 1;
-    const [w,h] = fxSize(fx, car);
-    el.style.backgroundSize = w.toFixed(2)+'% '+h.toFixed(2)+'%';
-    el.style.backgroundPosition = x+'% '+y+'%';
+    const g = fxGeom(fx, Number(el.dataset.car) || 1);
+    el.style.width = g.w.toFixed(3)+'%';
+    el.style.height = g.h.toFixed(3)+'%';
+    el.style.left = g.l.toFixed(3)+'%';
+    el.style.top = g.t.toFixed(3)+'%';
   });
 }
 function avatarHTML(name, url, size, color, key){
   const st = `width:${size}px;height:${size}px;font-size:${Math.round(size*0.44)}px;`;
-  if(url) return `<div class="avatar" data-fx="${esc(key||'')}" data-car="1" style="${st}${bgStyle(url, getFx(key), 1)}"></div>`;
+  if(url) return `<div class="avatar" style="${st}">${imgLayer(url, getFx(key), 1, key)}</div>`;
   return `<div class="avatar" style="${st}background-color:${color||autoColor(name)}">${esc(initial(name))}</div>`;
 }
 function ph(seed){
@@ -610,7 +618,7 @@ function commentHTML(c, depth, mobile, path){
   h += `<div class="cm-acts"><span class="lk">${I.up}<span>${esc(c.likes||'')}</span></span>
         <span class="lk" style="margin-left:8px">${I.down}</span>`;
   h += mobile ? `<span class="lk" style="margin-left:8px">${I.cmt}</span>` : `<span class="reply">답글</span>`;
-  if(c.hearted) h += `<span class="heart-wrap"><span class="ha" data-fx="video.avatar" data-car="1" style="${S.video.avatar?bgStyle(S.video.avatar, getFx('video.avatar'), 1):`background-color:${S.video.color||autoColor(S.video.channel)}`}"></span><span class="hh">❤️</span></span>`;
+  if(c.hearted) h += `<span class="heart-wrap"><span class="ha" style="background-color:${S.video.color||autoColor(S.video.channel)}">${S.video.avatar?imgLayer(S.video.avatar, getFx('video.avatar'), 1, 'video.avatar'):''}</span><span class="hh">❤️</span></span>`;
   h += `</div>`;
   if(kids){
     if(depth===0) h += `<div class="toggle-replies">${I.caret}<span>답글 ${kids}개</span></div>`;
@@ -628,7 +636,7 @@ function commentsInner(compact){
 function recSide(){
   return `<div class="yt-side scrollpane"><div class="spin" style="display:flex;flex-direction:column;gap:8px">` +
     S.recs.map((r,i) => `<div class="rec">
-      <div class="th" data-fx="rec:${i}" data-car="1.787" style="${r.thumb?bgStyle(r.thumb, r.thumbFx, 168/94):ph(r.title)}"><span class="d">${esc(r.dur)}</span></div>
+      <div class="th" style="${ph(r.title)}">${r.thumb?imgLayer(r.thumb, r.thumbFx, 168/94, 'rec:'+i):''}<span class="d">${esc(r.dur)}</span></div>
       <div class="info"><div class="rt">${esc(r.title)}</div>
         <div class="rc">${esc(r.ch)}</div><div class="rc" style="margin-top:0">▷ ${esc(r.meta)}</div></div>
     </div>`).join('') + `</div></div>`;
@@ -651,7 +659,7 @@ function pcHeader(){
 function videoBlockPC(vw){
   const v = S.video;
   return `<div style="flex:none;${vw?`width:${Math.round(vw)}px;`:''}">
-    <div class="player" data-fx="video.thumb" data-car="1.7778" style="${v.thumb?bgStyle(v.thumb, v.thumbFx, 16/9):ph(v.title)}">${playerOverlay(false)}</div>
+    <div class="player" style="${ph(v.title)}">${v.thumb?imgLayer(v.thumb, v.thumbFx, 16/9, 'video.thumb'):''}${playerOverlay(false)}</div>
     <h1 class="vtitle">${esc(v.title)}</h1>
     <div class="vmeta">
       <div class="vchan">${avatarHTML(v.channel, v.avatar, 40, v.color, 'video.avatar')}
@@ -684,7 +692,7 @@ function renderPC(){
   } else {
     const inlineRecs = narrow ? `<div style="display:flex;flex-direction:column;gap:14px;margin-top:20px">` +
       S.recs.map(r=>`<div class="rec">
-        <div class="th" data-fx="rec:${S.recs.indexOf(r)}" data-car="1.774" style="width:220px;height:124px;${r.thumb?bgStyle(r.thumb, r.thumbFx, 220/124):ph(r.title)}"><span class="d">${esc(r.dur)}</span></div>
+        <div class="th" style="width:220px;height:124px;${ph(r.title)}">${r.thumb?imgLayer(r.thumb, r.thumbFx, 220/124, 'rec:'+S.recs.indexOf(r)):''}<span class="d">${esc(r.dur)}</span></div>
         <div class="info"><div class="rt" style="font-size:15px">${esc(r.title)}</div>
           <div class="rc">${esc(r.ch)}</div><div class="rc" style="margin-top:0">▷ ${esc(r.meta)}</div></div></div>`).join('') + `</div>` : '';
     body = `<div class="yt-main"><div class="scrollpane" style="flex:1;min-height:0"><div class="spin">${videoBlockPC()}
@@ -757,7 +765,7 @@ function mbWatch(){
         <span style="margin-left:auto;color:var(--tx2)">${I.dots}</span></div>
       <div class="p">${avatarHTML(cp.name,cp.avatar,24,cp.color,'c:'+cpi)}<div>${esc(String(cp.text||'').slice(0,86))}…</div></div></div>`;
   inner += S.recs.map((r,i)=>`<div class="mb-rec">
-      <div class="thumb" data-fx="rec:${i}" data-car="1.7778" style="${r.thumb?bgStyle(r.thumb, r.thumbFx, 16/9):ph(r.title)}"><span class="d">${esc(r.dur)}</span></div>
+      <div class="thumb" style="${ph(r.title)}">${r.thumb?imgLayer(r.thumb, r.thumbFx, 16/9, 'rec:'+i):''}<span class="d">${esc(r.dur)}</span></div>
       <div class="meta">${avatarHTML(r.ch,'',36)}<div style="flex:1"><div class="rt">${esc(r.title)}</div>
         <div class="rc">${esc(r.ch)} · ${esc(r.meta)}</div></div><div style="color:var(--tx2)">${I.dots}</div></div></div>`).join('');
   return `<div class="mb-scroll scrollpane"><div class="spin">${inner}</div></div>`;
@@ -769,7 +777,7 @@ function renderMobile(){
   if(S.layout==='comments'){
     inner += mbSheet(true);
   } else {
-    inner += `<div class="mb-player" data-fx="video.thumb" data-car="1.7778" style="${v.thumb?bgStyle(v.thumb, v.thumbFx, 16/9):ph(v.title)}">${playerOverlay(true)}</div>`;
+    inner += `<div class="mb-player" style="${ph(v.title)}">${v.thumb?imgLayer(v.thumb, v.thumbFx, 16/9, 'video.thumb'):''}${playerOverlay(true)}</div>`;
     inner += (S.layout==='recs') ? mbWatch() : mbSheet(false);
   }
   const screen = `<div class="yt mb-screen" data-t="${S.theme}" style="width:${W}px;height:${H}px">${inner}</div>`;
@@ -933,9 +941,11 @@ function renderRail(){
   </div></details>`;
 
   h += `<details class="sec"><summary><span class="sec-num">07</span>저장<span class="sec-chev">›</span></summary><div class="sec-body">
-    ${seg('배율','_scale',[[1,'1x'],[2,'2x'],[3,'3x']])}
+    ${seg('배율','_scale',[[1,'1x'],[2,'2x'],[3,'3x'],[4,'4x']])}
+    <p class="hint">저장 크기 약 <b>${(()=>{const [w,hh]=S.device==='pc'?(RATIOS[S.ratio]||RATIOS['16:9']):PHONE;
+      const sc=S._scale||3; return `${Math.round(w*sc)} × ${hh?Math.round(hh*sc):'자동'}`;})()}px</b></p>
     <button class="btn wide primary" id="btnPng2">PNG로 저장</button>
-    <p class="hint">미리보기에서 스크롤한 위치 그대로 저장돼요.</p>
+    <p class="hint">넣은 사진은 원본 해상도 그대로 그려지니까 배율을 올릴수록 또렷해져요. 미리보기에서 스크롤한 위치 그대로 저장돼요.</p>
   </div></details>`;
 
   rail.innerHTML = h;
@@ -1184,7 +1194,7 @@ function savePNG(){
   const name = `youtube-comment-${S.device}-${S.theme}.png`;
   stageInner.style.transform = 'scale(1)';
   freezeScroll(true);
-  html2canvas(node, {backgroundColor:null, scale:S._scale||2, useCORS:true, logging:false}).then(cv=>{
+  html2canvas(node, {backgroundColor:null, scale:S._scale||3, useCORS:true, allowTaint:true, imageTimeout:0, logging:false}).then(cv=>{
     freezeScroll(false); stageInner.style.transform = prev;
     if(dlNs) cv.toBlob(blob => { dlNs.save({filename:name, data:blob}).catch(err=>{ if(!err||err.code!=='declined') fallbackSave(cv,name); }); }, 'image/png');
     else fallbackSave(cv, name);
