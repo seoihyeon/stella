@@ -1774,6 +1774,38 @@ function buildFauxShadow(frame, radius, y, blur, alpha, n = 10){
   return wrap;
 }
 
+/* Safari can finish rasterising the page snapshot before the photos inside it have
+   decoded, so the same click yields a full image, a photo-less one, or a blank one at
+   random. Decode everything up front, then take throwaway low-res passes until two in
+   a row come out identical — only then is the renderer settled enough for the real one. */
+async function preloadImages(){
+  const urls = [];
+  if(state.pl.img) urls.push(state.pl.img);
+  if(state.mini.img) urls.push(state.mini.img);
+  if(state.canvas.on && state.canvas.img) urls.push(state.canvas.img);
+  state.tracks.forEach(t=>{ if(t.img) urls.push(t.img); });
+  await Promise.all(urls.map(async u=>{
+    const im = await loadImg(u);
+    try{ if(im && im.decode) await im.decode(); }catch(e){}
+  }));
+  return urls.length;
+}
+function fingerprint(im, n = 40){
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = n;
+  const cx = cv.getContext("2d");
+  cx.fillStyle = "#fff"; cx.fillRect(0,0,n,n);
+  cx.drawImage(im, 0, 0, n, n);
+  return cx.getImageData(0,0,n,n).data;
+}
+function fpDiff(a, b){
+  let s = 0;
+  for(let i = 0; i < a.length; i += 4)
+    s += Math.abs(a[i]-b[i]) + Math.abs(a[i+1]-b[i+1]) + Math.abs(a[i+2]-b[i+2]);
+  return s / (a.length/4 * 3);
+}
+const nextFrame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
 async function exportPng(){
   const live = viewport.querySelector("#canvasEl");
   if(!live) return;
@@ -1833,13 +1865,35 @@ async function exportPng(){
       }
     }
 
-    const blob = await htmlToImage.toBlob(node, {
-      pixelRatio: 3,
-      skipFonts: true,          /* the mockup uses system faces; don't stall on webfonts */
-      cacheBust: false,
-      width: node.offsetWidth,
-      height: node.offsetHeight
-    });
+    const opts = { skipFonts: true, cacheBust: false,
+                   width: node.offsetWidth, height: node.offsetHeight };
+
+    const photoCount = await preloadImages();
+    await nextFrame();
+
+    /* settle: cheap passes until two agree (or three tries) */
+    if(photoCount){
+      let prev = null;
+      for(let i = 0; i < 3; i++){
+        const im = await loadImg(await htmlToImage.toPng(node, {...opts, pixelRatio: 0.35}));
+        if(!im) break;
+        const fp = fingerprint(im);
+        if(prev && fpDiff(prev, fp) < 2) break;
+        prev = fp;
+        await nextFrame();
+      }
+    }
+
+    let blob = await htmlToImage.toBlob(node, {...opts, pixelRatio: 3});
+    /* last guard: if the full-size pass still lost the photos, take it once more */
+    if(blob && photoCount){
+      const check = await loadImg(URL.createObjectURL(blob));
+      const small = await loadImg(await htmlToImage.toPng(node, {...opts, pixelRatio: 0.35}));
+      if(check && small && fpDiff(fingerprint(check), fingerprint(small)) > 6){
+        const retry = await htmlToImage.toBlob(node, {...opts, pixelRatio: 3});
+        if(retry) blob = retry;
+      }
+    }
     if(!blob) throw new Error("empty blob");
     const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,"");
     download(blob, `apple-music-${stamp}.png`);
